@@ -1,0 +1,2593 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="night">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#110904">
+<title>INTONE — Live Intonation Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   INTONE v9 — Enhanced: recording, playback sync, scoring,
+   musician-friendly analysis, metronome with lookahead scheduler.
+   Preserves all v8 design.
+   ============================================================ */
+
+/* ── Night palette (Reinhold Schmidt bass) ── */
+[data-theme="night"] {
+  --bg:       #110904;
+  --bg2:      #1c1006;
+  --surface:  rgba(200,130,50,0.13);
+  --surf2:    rgba(200,130,50,0.24);
+  --border:   rgba(220,160,70,0.38);
+  --border2:  rgba(220,160,70,0.70);
+  --accent:     #c47a28;
+  --accent2:    #f0b050;
+  --accent-dim: rgba(196,122,40,0.22);
+  --cool:     #70c8e0;
+  --cool-dim: rgba(112,200,224,0.18);
+  --green:    #6edf88;
+  --green-glow: rgba(110,223,136,0.55);
+  --red:      #e86858;
+  --line-played: #f0b050;
+  --line-ref:    #70c8e0;
+  --text:     #f0e0c0;
+  --text2:    #c8a060;
+  --muted:    #907040;
+}
+
+/* ── Day palette (Daphne Blue + Lake Placid Blue) ── */
+[data-theme="day"] {
+  --bg:       #b4c8d8;
+  --bg2:      #92aec4;
+  --surface:  rgba(10,34,75,0.14);
+  --surf2:    rgba(10,34,75,0.26);
+  --border:   rgba(10,34,75,0.42);
+  --border2:  rgba(10,34,75,0.72);
+  --accent:     #2e5f96;
+  --accent2:    #1a3e70;
+  --accent-dim: rgba(46,95,150,0.18);
+  --cool:     #1a3870;
+  --cool-dim: rgba(26,56,112,0.14);
+  --green:    #0a5226;
+  --green-glow: rgba(10,82,38,0.40);
+  --red:      #8a1808;
+  --line-played: #a04c00;
+  --line-ref:    #1a3870;
+  --text:   #040c18;
+  --text2:  #0a1e3c;
+  --muted:  #1a3858;
+}
+
+/* ── Reset ── */
+*,*::before,*::after{-webkit-box-sizing:border-box;box-sizing:border-box;margin:0;padding:0;}
+html{font-size:16px;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}
+body{background:var(--bg);color:var(--text);font-family:'Syne','Segoe UI',Arial,sans-serif;min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;-moz-osx-font-smoothing:grayscale;-webkit-transition:background .40s,color .40s;transition:background .40s,color .40s;-ms-touch-action:manipulation;touch-action:manipulation;}
+
+/* Atmosphere */
+.atmo{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:0;}
+[data-theme="night"] .atmo{background:radial-gradient(ellipse 60% 50% at 12% 10%,rgba(196,122,40,.09) 0%,transparent 65%),radial-gradient(ellipse 45% 60% at 88% 85%,rgba(106,184,208,.05) 0%,transparent 65%),radial-gradient(ellipse 80% 40% at 50% 105%,rgba(140,70,10,.07) 0%,transparent 55%);}
+[data-theme="day"] .atmo{background:radial-gradient(ellipse 60% 50% at 10% 8%,rgba(100,160,210,.30) 0%,transparent 65%),radial-gradient(ellipse 50% 45% at 90% 88%,rgba(180,120,40,.08) 0%,transparent 60%),radial-gradient(ellipse 70% 30% at 50% 100%,rgba(66,114,160,.12) 0%,transparent 55%);}
+
+.app{position:relative;z-index:1;max-width:1260px;margin:0 auto;padding:0 20px 56px;}
+
+/* ── Header ── */
+.header{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:space-between;justify-content:space-between;-webkit-flex-wrap:wrap;flex-wrap:wrap;gap:14px;padding:18px 0;border-bottom:1px solid var(--border);margin-bottom:18px;}
+.logo{display:-webkit-flex;display:flex;-webkit-align-items:baseline;align-items:baseline;gap:12px;}
+.logo-wordmark{font-size:24px;font-weight:800;letter-spacing:.28em;color:var(--accent2);background:-webkit-linear-gradient(left,var(--accent2) 10%,var(--accent) 90%);background:linear-gradient(to right,var(--accent2) 10%,var(--accent) 90%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+[data-theme="day"] .logo-wordmark{background:-webkit-linear-gradient(left,#1e3c6e 10%,#4272a0 90%);background:linear-gradient(to right,#1e3c6e 10%,#4272a0 90%);}
+.logo-sub{font-family:'DM Mono','Courier New',monospace;font-size:12px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;}
+.header-right{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:12px;-webkit-flex-wrap:wrap;flex-wrap:wrap;}
+
+/* ── Theme toggle ── */
+.theme-toggle{display:-webkit-inline-flex;display:inline-flex;-webkit-align-items:center;align-items:center;gap:9px;padding:8px 14px;min-height:44px;background:var(--surface);border:1px solid var(--border);border-radius:30px;cursor:pointer;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;}
+.theme-toggle:hover,.theme-toggle:focus{background:var(--surf2);border-color:var(--border2);outline:none;}
+.toggle-track{width:38px;height:20px;border-radius:10px;background:var(--muted);position:relative;-webkit-transition:background .28s;transition:background .28s;-webkit-flex-shrink:0;flex-shrink:0;}
+[data-theme="day"] .toggle-track{background:var(--accent);}
+.toggle-thumb{position:absolute;top:3px;left:3px;width:14px;height:14px;border-radius:50%;background:var(--bg);-webkit-transition:left .28s;transition:left .28s;}
+[data-theme="day"] .toggle-thumb{left:21px;}
+.toggle-icon{font-size:14px;line-height:1;}
+.toggle-label{font-family:'DM Mono','Courier New',monospace;font-size:12px;color:var(--text2);letter-spacing:.10em;text-transform:uppercase;min-width:34px;}
+
+/* ── A4 Calibration ── */
+.calibration{display:-webkit-inline-flex;display:inline-flex;-webkit-align-items:center;align-items:center;gap:9px;padding:8px 14px;min-height:44px;background:var(--surface);border:1px solid var(--border);border-radius:30px;}
+.calibration-label{font-family:'DM Mono','Courier New',monospace;font-size:12px;color:var(--muted);letter-spacing:.12em;font-weight:500;}
+.calibration input[type="range"]{-webkit-appearance:none;appearance:none;width:72px;height:4px;background:var(--surf2);border-radius:2px;outline:none;cursor:pointer;}
+.calibration input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;background:var(--accent2);cursor:pointer;}
+.calibration input[type="range"]::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--accent2);cursor:pointer;border:none;}
+.calibration input[type="range"]::-ms-thumb{width:16px;height:16px;border-radius:50%;background:var(--accent2);cursor:pointer;}
+.calibration-val{font-family:'DM Mono','Courier New',monospace;font-size:12px;color:var(--accent2);min-width:56px;font-weight:500;}
+
+/* ── Mic dot ── */
+.mic-dot{width:12px;height:12px;border-radius:50%;background:var(--muted);-webkit-flex-shrink:0;flex-shrink:0;display:inline-block;}
+.mic-dot.live{background:var(--green);-webkit-animation:micPulse 2s infinite;animation:micPulse 2s infinite;}
+@-webkit-keyframes micPulse{0%{-webkit-box-shadow:0 0 0 0 rgba(122,207,138,.6);}70%{-webkit-box-shadow:0 0 0 11px rgba(122,207,138,0);}100%{-webkit-box-shadow:0 0 0 0 rgba(122,207,138,0);}}
+@keyframes micPulse{0%{box-shadow:0 0 0 0 rgba(122,207,138,.6);}70%{box-shadow:0 0 0 11px rgba(122,207,138,0);}100%{box-shadow:0 0 0 0 rgba(122,207,138,0);}}
+
+/* ── Buttons ── */
+.btn{font-family:'DM Mono','Courier New',monospace;font-size:13px;letter-spacing:.12em;text-transform:uppercase;padding:11px 20px;min-height:44px;border-radius:6px;border:2px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;white-space:nowrap;font-weight:700;-webkit-transition:all .2s;transition:all .2s;-webkit-tap-highlight-color:transparent;-webkit-appearance:none;appearance:none;}
+.btn:hover,.btn:focus{background:var(--surf2);border-color:var(--border2);color:var(--text);outline:none;}
+.btn:active{opacity:.82;}
+
+.btn-tuner-on{border-color:var(--green);color:var(--green);background:rgba(110,223,136,0.10);text-shadow:0 0 12px rgba(110,223,136,0.4);}
+[data-theme="day"] .btn-tuner-on{background:rgba(10,82,38,.12);color:#0a5226;border-color:#0a5226;text-shadow:none;}
+.btn-tuner-on:hover,.btn-tuner-on:active{background:rgba(110,223,136,0.20);border-color:var(--green);box-shadow:0 0 16px rgba(110,223,136,0.30);}
+[data-theme="day"] .btn-tuner-on:hover{background:rgba(10,82,38,.22);box-shadow:none;}
+.btn-tuner-off{border-color:var(--muted);color:var(--text);background:var(--surf2);}
+
+.btn-analyze-start{border-color:var(--accent2);color:var(--accent2);background:var(--accent-dim);}
+[data-theme="day"] .btn-analyze-start{border-color:#1a3e70;color:#1a3e70;background:rgba(46,95,150,.15);}
+.btn-analyze-start:hover{background:var(--surf2);}
+.btn-analyze-start:disabled{opacity:.30;cursor:not-allowed;box-shadow:none;}
+.btn-analyze-stop{border-color:var(--red);color:var(--red);background:rgba(232,104,88,0.14);}
+[data-theme="day"] .btn-analyze-stop{background:rgba(138,24,8,.13);color:#8a1808;border-color:#8a1808;}
+.btn-analyze-stop:hover{background:rgba(232,104,88,0.24);}
+[data-theme="day"] .btn-analyze-stop:hover{background:rgba(138,24,8,.22);}
+
+.btn-reset{border-color:var(--accent2);color:var(--accent2);background:var(--accent-dim);}
+[data-theme="day"] .btn-reset{border-color:#1a3e70;color:#1a3e70;background:rgba(46,95,150,.15);}
+.btn-reset:hover{background:var(--surf2);border-color:var(--border2);}
+.btn-reset:disabled{opacity:.28;cursor:not-allowed;}
+
+/* NEW: Record button */
+.btn-record{border-color:var(--red);color:var(--red);background:rgba(232,104,88,0.12);}
+[data-theme="day"] .btn-record{border-color:#8a1808;color:#8a1808;background:rgba(138,24,8,.10);}
+.btn-record:hover:not(:disabled){background:rgba(232,104,88,0.22);box-shadow:0 0 14px rgba(232,104,88,0.28);}
+.btn-record.active-rec{background:rgba(232,104,88,0.22);box-shadow:0 0 14px rgba(232,104,88,0.4);}
+.btn-record:disabled{opacity:.28;cursor:not-allowed;}
+
+/* NEW: Play/Pause buttons */
+.btn-play{border-color:var(--cool);color:var(--cool);background:rgba(112,200,224,0.12);}
+[data-theme="day"] .btn-play{border-color:#1a3870;color:#1a3870;background:rgba(26,56,112,.10);}
+.btn-play:hover:not(:disabled){background:rgba(112,200,224,0.22);}
+.btn-play:disabled{opacity:.28;cursor:not-allowed;}
+
+/* ── Control bar ── */
+.control-bar{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:space-between;justify-content:space-between;-webkit-flex-wrap:wrap;flex-wrap:wrap;gap:12px;padding:14px 20px;border-radius:12px;border:2px solid var(--border);margin-bottom:20px;}
+[data-theme="night"] .control-bar{background:rgba(30,14,2,.80);border-color:rgba(220,160,70,.52);box-shadow:0 2px 20px rgba(0,0,0,.45);}
+[data-theme="day"]   .control-bar{background:rgba(10,34,75,.14);border-color:rgba(10,34,75,.55);box-shadow:0 2px 12px rgba(10,34,75,.18);}
+
+.tuner-ctrl{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:10px;-webkit-flex-wrap:wrap;flex-wrap:wrap;}
+.tuner-state-label{font-family:'DM Mono','Courier New',monospace;font-size:13px;color:var(--text2);letter-spacing:.10em;text-transform:uppercase;font-weight:700;}
+
+.ctrl-divider{width:2px;height:36px;background:var(--border);-webkit-flex-shrink:0;flex-shrink:0;border-radius:1px;}
+@media(max-width:700px){.ctrl-divider{display:none;}}
+
+.analyze-ctrl{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:10px;-webkit-flex-wrap:wrap;flex-wrap:wrap;}
+.analyze-dot{width:11px;height:11px;border-radius:50%;background:var(--muted);-webkit-flex-shrink:0;flex-shrink:0;display:inline-block;}
+.analyze-dot.recording{background:var(--red);-webkit-animation:recPulse 1.2s infinite;animation:recPulse 1.2s infinite;}
+@-webkit-keyframes recPulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+@keyframes recPulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.analyze-label{font-family:'DM Mono','Courier New',monospace;font-size:13px;color:var(--text2);letter-spacing:.10em;text-transform:uppercase;font-weight:700;}
+.analyze-label.recording{color:var(--red);font-weight:800;}
+[data-theme="day"] .analyze-label.recording{color:#8a1808;}
+.ctrl-status{font-family:'DM Mono','Courier New',monospace;font-size:14px;color:var(--text);letter-spacing:.06em;-webkit-flex:1;flex:1;text-align:center;font-weight:700;}
+@media(max-width:760px){.ctrl-status{display:none;}}
+
+/* ── NEW: Recording bar (below control bar) ── */
+.rec-bar{
+  display:-webkit-flex;display:flex;
+  -webkit-align-items:center;align-items:center;
+  -webkit-justify-content:space-between;justify-content:space-between;
+  -webkit-flex-wrap:wrap;flex-wrap:wrap;
+  gap:10px;padding:12px 20px;
+  border-radius:10px;border:2px solid var(--border);
+  margin-bottom:20px;
+}
+[data-theme="night"] .rec-bar{background:rgba(20,8,0,.75);border-color:rgba(220,104,88,.40);}
+[data-theme="day"]   .rec-bar{background:rgba(138,24,8,.06);border-color:rgba(138,24,8,.28);}
+.rec-bar-left{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:10px;-webkit-flex-wrap:wrap;flex-wrap:wrap;}
+.rec-bar-centre{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:10px;-webkit-flex:1;flex:1;-webkit-justify-content:center;justify-content:center;}
+.rec-bar-right{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:10px;-webkit-flex-wrap:wrap;flex-wrap:wrap;}
+.rec-timer{font-family:'DM Mono','Courier New',monospace;font-size:22px;font-weight:800;color:var(--red);letter-spacing:.08em;min-width:70px;text-align:center;}
+.rec-timer.idle{color:var(--muted);}
+[data-theme="day"] .rec-timer{color:#8a1808;}
+[data-theme="day"] .rec-timer.idle{color:var(--muted);}
+.rec-mode-label{font-family:'DM Mono','Courier New',monospace;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.14em;font-weight:700;}
+/* Recording mode toggle */
+.rec-mode-tabs{display:-webkit-flex;display:flex;gap:3px;background:rgba(0,0,0,.20);border-radius:5px;padding:3px;border:1px solid var(--border);}
+.rec-mode-btn{font-family:'DM Mono','Courier New',monospace;font-size:10px;letter-spacing:.09em;text-transform:uppercase;padding:5px 12px;min-height:32px;border-radius:3px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer;font-weight:600;-webkit-appearance:none;appearance:none;-webkit-transition:all .18s;transition:all .18s;}
+.rec-mode-btn.active{background:rgba(232,104,88,0.18);color:var(--red);border-color:rgba(232,104,88,0.35);}
+[data-theme="day"] .rec-mode-btn.active{color:#8a1808;border-color:rgba(138,24,8,.35);}
+/* Progress bar */
+.rec-progress-wrap{-webkit-flex:1;flex:1;height:6px;background:var(--surf2);border-radius:3px;overflow:hidden;min-width:80px;max-width:300px;}
+.rec-progress-bar{height:100%;background:var(--red);border-radius:3px;width:0%;-webkit-transition:width .5s linear;transition:width .5s linear;}
+[data-theme="day"] .rec-progress-bar{background:#8a1808;}
+
+/* ── Mic permission banner ── */
+.mic-banner{display:none;border-radius:8px;padding:14px 18px;margin-bottom:16px;font-family:'DM Mono','Courier New',monospace;font-size:14px;color:var(--text);line-height:1.7;border:2px solid var(--accent2);}
+[data-theme="night"] .mic-banner{background:rgba(196,122,40,.20);}
+[data-theme="day"]   .mic-banner{background:rgba(46,95,150,.18);}
+.mic-banner.show{display:block;}
+.mic-banner strong{color:var(--accent2);}
+[data-theme="day"] .mic-banner strong{color:#1a3e70;}
+.mic-steps{margin-top:8px;padding-left:20px;}
+.mic-steps li{margin-bottom:5px;}
+
+/* ── Main grid ── */
+.main-grid{display:-webkit-flex;display:flex;-webkit-flex-wrap:wrap;flex-wrap:wrap;gap:18px;-webkit-align-items:flex-start;align-items:flex-start;}
+.col-main{-webkit-flex:1 1 580px;flex:1 1 580px;display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column;gap:18px;}
+.col-side{-webkit-flex:0 0 310px;flex:0 0 310px;display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column;gap:18px;}
+
+/* ── Panel ── */
+.panel{border:2px solid var(--border);border-radius:12px;padding:22px;position:relative;-webkit-box-shadow:0 4px 28px rgba(0,0,0,.28);box-shadow:0 4px 28px rgba(0,0,0,.28);}
+[data-theme="night"] .panel{background:rgba(26,12,2,.80);border-color:rgba(220,160,70,.38);}
+[data-theme="day"]   .panel{background:rgba(178,205,228,.82);border-color:rgba(10,34,75,.40);-webkit-box-shadow:0 2px 14px rgba(10,34,75,.18);box-shadow:0 2px 14px rgba(10,34,75,.18);}
+[data-theme="day"] .panel::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(to right,transparent,rgba(100,160,210,.40),transparent);border-radius:12px 12px 0 0;}
+.panel-label{font-family:'DM Mono','Courier New',monospace;font-size:12px;letter-spacing:.22em;color:var(--muted);text-transform:uppercase;margin-bottom:18px;font-weight:700;}
+
+/* ── Tuner ── */
+.tuner-body{display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column;-webkit-align-items:center;align-items:center;gap:6px;padding-bottom:14px;}
+.note-name{font-size:110px;font-weight:800;line-height:1;letter-spacing:-0.03em;min-height:114px;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;color:var(--muted);-webkit-transition:color .22s,text-shadow .22s;transition:color .22s,text-shadow .22s;}
+.note-name.tuner-idle{color:var(--muted);text-shadow:none;}
+.note-name.in-tune{color:#8ef5a8;text-shadow:0 0 20px rgba(110,230,140,0.90),0 0 45px rgba(110,230,140,0.60),0 0 90px rgba(110,230,140,0.30);}
+[data-theme="day"] .note-name.in-tune{color:#0a6e30;text-shadow:0 0 16px rgba(10,110,48,0.55),0 0 36px rgba(10,110,48,0.28);}
+.note-name.near-tune{color:#ffc050;text-shadow:0 0 18px rgba(255,176,60,0.75),0 0 40px rgba(255,176,60,0.35);}
+[data-theme="day"] .note-name.near-tune{color:#8c4800;text-shadow:0 0 14px rgba(140,72,0,0.38);}
+.note-name.off-tune{color:#ff7060;text-shadow:0 0 18px rgba(255,100,80,0.75),0 0 40px rgba(255,100,80,0.35);}
+[data-theme="day"] .note-name.off-tune{color:#8a1808;text-shadow:0 0 14px rgba(138,24,8,0.35);}
+
+.freq-row{font-family:'DM Mono','Courier New',monospace;font-size:15px;color:var(--text2);display:-webkit-flex;display:flex;gap:10px;-webkit-align-items:center;align-items:center;-webkit-flex-wrap:wrap;flex-wrap:wrap;-webkit-justify-content:center;justify-content:center;text-align:center;font-weight:600;}
+.freq-played{color:var(--line-played);font-weight:800;}
+.freq-ref{color:var(--line-ref);font-weight:800;}
+[data-theme="day"] .freq-played{color:#a04c00;}
+[data-theme="day"] .freq-ref{color:#1a3870;}
+
+.cents-value{font-family:'DM Mono','Courier New',monospace;font-size:32px;font-weight:800;color:var(--text2);-webkit-transition:color .22s,text-shadow .22s;transition:color .22s,text-shadow .22s;margin-top:4px;letter-spacing:-.01em;}
+.cents-value.in-tune{color:#8ef5a8;text-shadow:0 0 16px rgba(110,230,140,0.75),0 0 36px rgba(110,230,140,0.30);}
+.cents-value.near-tune{color:#ffc050;}
+.cents-value.off-tune{color:#ff7060;}
+[data-theme="day"] .cents-value{color:var(--text2);}
+[data-theme="day"] .cents-value.in-tune{color:#0a6e30;text-shadow:0 0 12px rgba(10,110,48,0.35);}
+[data-theme="day"] .cents-value.near-tune{color:#8c4800;}
+[data-theme="day"] .cents-value.off-tune{color:#8a1808;}
+
+/* Tuner bar */
+.tuner-wrap{width:100%;max-width:540px;padding:0 8px;margin-top:16px;}
+.tuner-track-box{position:relative;height:58px;}
+.tuner-rail{position:absolute;top:50%;left:0;right:0;height:4px;-webkit-transform:translateY(-50%);transform:translateY(-50%);border-radius:3px;background:-webkit-linear-gradient(left,rgba(217,96,80,.6) 0%,rgba(232,160,64,.5) 22%,rgba(122,207,138,.75) 42%,rgba(122,207,138,.75) 58%,rgba(232,160,64,.5) 78%,rgba(217,96,80,.6) 100%);background:linear-gradient(to right,rgba(217,96,80,.6) 0%,rgba(232,160,64,.5) 22%,rgba(122,207,138,.75) 42%,rgba(122,207,138,.75) 58%,rgba(232,160,64,.5) 78%,rgba(217,96,80,.6) 100%);opacity:.35;-webkit-transition:opacity .5s;transition:opacity .5s;}
+[data-theme="day"] .tuner-rail{background:-webkit-linear-gradient(left,rgba(140,26,10,.7) 0%,rgba(184,92,8,.6) 22%,rgba(13,92,42,.8) 42%,rgba(13,92,42,.8) 58%,rgba(184,92,8,.6) 78%,rgba(140,26,10,.7) 100%);background:linear-gradient(to right,rgba(140,26,10,.7) 0%,rgba(184,92,8,.6) 22%,rgba(13,92,42,.8) 42%,rgba(13,92,42,.8) 58%,rgba(184,92,8,.6) 78%,rgba(140,26,10,.7) 100%);}
+.tuner-rail.live{opacity:1;}
+.tuner-zone{position:absolute;top:50%;width:16%;-webkit-transform:translateY(-50%) translateX(-50%);transform:translateY(-50%) translateX(-50%);left:50%;height:30px;border-radius:4px;background:rgba(122,207,138,.06);border:1px solid rgba(122,207,138,.20);}
+[data-theme="day"] .tuner-zone{background:rgba(13,92,42,.08);border-color:rgba(13,92,42,.28);}
+.tuner-ticks{position:absolute;top:50%;left:0;right:0;-webkit-transform:translateY(-50%);transform:translateY(-50%);}
+.tuner-tick{position:absolute;top:-6px;width:1px;height:12px;background:rgba(210,150,60,.25);-webkit-transform:translateX(-50%);transform:translateX(-50%);}
+.tuner-tick.center{height:22px;top:-11px;background:rgba(210,150,60,.55);}
+[data-theme="day"] .tuner-tick{background:rgba(14,44,90,.30);}
+[data-theme="day"] .tuner-tick.center{background:rgba(14,44,90,.65);}
+.tuner-needle{position:absolute;top:50%;width:22px;height:22px;border-radius:50%;background:var(--muted);-webkit-transform:translate(-50%,-50%);transform:translate(-50%,-50%);left:50%;-webkit-transition:left .11s,background .3s,box-shadow .3s;transition:left .11s,background .3s,box-shadow .3s;z-index:2;}
+.tuner-needle::after{content:'';position:absolute;top:5px;left:5px;right:5px;bottom:5px;border-radius:50%;background:rgba(255,255,255,.80);}
+.tuner-captions{display:-webkit-flex;display:flex;-webkit-justify-content:space-between;justify-content:space-between;font-family:'DM Mono','Courier New',monospace;font-size:12px;color:var(--text2);letter-spacing:.09em;margin-top:9px;font-weight:700;}
+[data-theme="day"] .tuner-captions{color:#1a3858;font-weight:800;}
+.tuner-prompt{margin-top:20px;font-family:'DM Mono','Courier New',monospace;font-size:14px;color:var(--text2);text-align:center;letter-spacing:.06em;line-height:1.8;font-weight:600;}
+[data-theme="day"] .tuner-prompt{color:#1a3858;font-weight:700;}
+.tuner-prompt.hidden{display:none;}
+
+/* ── Graph ── */
+.graph-header{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:space-between;justify-content:space-between;margin-bottom:12px;-webkit-flex-wrap:wrap;flex-wrap:wrap;gap:10px;}
+.graph-mode-tabs{display:-webkit-flex;display:flex;gap:3px;background:rgba(0,0,0,.15);border-radius:5px;padding:4px;border:1px solid var(--border);}
+[data-theme="day"] .graph-mode-tabs{background:rgba(14,44,90,.10);}
+.tab-btn{font-family:'DM Mono','Courier New',monospace;font-size:12px;letter-spacing:.09em;text-transform:uppercase;padding:7px 14px;min-height:40px;border-radius:3px;border:1px solid transparent;background:transparent;color:var(--muted);cursor:pointer;font-weight:500;-webkit-tap-highlight-color:transparent;-webkit-appearance:none;appearance:none;-webkit-transition:all .18s;transition:all .18s;}
+.tab-btn.active{background:var(--accent-dim);color:var(--accent2);border-color:rgba(196,122,40,.28);}
+[data-theme="day"] .tab-btn{color:#1e4060;}
+[data-theme="day"] .tab-btn.active{background:rgba(46,95,150,.18);color:#2a5282;border-color:rgba(42,82,130,.40);}
+.graph-btn-row{display:-webkit-flex;display:flex;gap:8px;}
+.icon-btn{width:38px;height:38px;border-radius:6px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-size:15px;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:center;justify-content:center;-webkit-tap-highlight-color:transparent;-webkit-appearance:none;appearance:none;-webkit-transition:all .18s;transition:all .18s;}
+.icon-btn:hover,.icon-btn:focus{border-color:var(--border2);color:var(--text);outline:none;}
+[data-theme="day"] .icon-btn{color:#0e2440;border-color:rgba(14,44,90,.30);}
+[data-theme="day"] .icon-btn:hover{border-color:rgba(14,44,90,.60);color:#060e18;}
+
+.graph-legend{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:22px;margin-bottom:12px;padding:10px 14px;background:var(--surf2);border-radius:7px;border:2px solid var(--border);}
+[data-theme="day"] .graph-legend{background:rgba(46,95,150,.16);border-color:rgba(10,34,75,.28);}
+.leg-item{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:10px;font-family:'DM Mono','Courier New',monospace;font-size:13px;font-weight:700;}
+.leg-line-played{width:32px;height:3px;border-radius:2px;background:var(--line-played);-webkit-flex-shrink:0;flex-shrink:0;}
+.leg-line-ref{width:32px;height:0;border-top:2px dashed var(--line-ref);-webkit-flex-shrink:0;flex-shrink:0;}
+.leg-label-played{color:var(--line-played);font-weight:800;}
+.leg-label-ref{color:var(--line-ref);font-weight:800;}
+[data-theme="day"] .leg-label-played{color:#a04c00;}
+[data-theme="day"] .leg-label-ref{color:#1a3870;}
+
+/* Graph canvas wrapper for playhead positioning */
+.graph-canvas-wrap{position:relative;}
+#graphCanvas{display:block;width:100%;height:230px;border-radius:7px;cursor:crosshair;}
+[data-theme="night"] #graphCanvas{background:rgba(0,0,0,.40);}
+[data-theme="day"]   #graphCanvas{background:rgba(10,34,75,.11);}
+
+/* NEW: Playhead overlay on graph */
+.graph-playhead{
+  position:absolute;top:0;bottom:0;width:2px;
+  background:rgba(255,255,255,0.75);
+  pointer-events:none;
+  display:none;
+  border-radius:1px;
+  box-shadow:0 0 6px rgba(255,255,255,0.5);
+}
+
+/* NEW: Playback controls below graph */
+.playback-bar{
+  display:-webkit-flex;display:flex;
+  -webkit-align-items:center;align-items:center;
+  gap:10px;margin-top:10px;
+  -webkit-flex-wrap:wrap;flex-wrap:wrap;
+}
+.playback-time{font-family:'DM Mono','Courier New',monospace;font-size:12px;color:var(--text2);font-weight:700;min-width:90px;}
+.playback-scrub{-webkit-flex:1;flex:1;-webkit-appearance:none;appearance:none;height:5px;background:var(--surf2);border-radius:3px;outline:none;cursor:pointer;min-width:80px;}
+.playback-scrub::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--cool);cursor:pointer;-webkit-transition:transform .1s;transition:transform .1s;}
+.playback-scrub::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--cool);cursor:pointer;border:none;}
+.playback-scrub::-ms-thumb{width:14px;height:14px;border-radius:50%;background:var(--cool);cursor:pointer;}
+
+.graph-nudge{font-family:'DM Mono','Courier New',monospace;font-size:13px;color:var(--text2);text-align:center;padding:10px 0 4px;letter-spacing:.06em;font-weight:700;}
+[data-theme="day"] .graph-nudge{color:#1a3858;font-weight:800;}
+
+/* ── Notes panel ── */
+.notes-panel{-webkit-flex:1 1 auto;flex:1 1 auto;display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column;max-height:680px;overflow:hidden;}
+.notes-scroll{-webkit-flex:1;flex:1;overflow-y:auto;overflow-x:hidden;display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column;gap:7px;padding-right:2px;-webkit-overflow-scrolling:touch;}
+.notes-scroll::-webkit-scrollbar{width:4px;}
+.notes-scroll::-webkit-scrollbar-track{background:transparent;}
+.notes-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.note-row{background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:11px 12px;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:10px;-webkit-animation:rowIn .26s ease;animation:rowIn .26s ease;-webkit-transition:background .18s,border-color .18s,box-shadow .18s;transition:background .18s,border-color .18s,box-shadow .18s;}
+/* Highlight active note during playback */
+.note-row.playhead-active{background:var(--surf2);border-color:var(--accent2);box-shadow:0 0 0 2px rgba(240,176,80,0.30);}
+[data-theme="day"] .note-row.playhead-active{box-shadow:0 0 0 2px rgba(26,62,112,0.30);}
+@-webkit-keyframes rowIn{from{opacity:0;-webkit-transform:translateX(8px);}to{opacity:1;-webkit-transform:translateX(0);}}
+@keyframes rowIn{from{opacity:0;transform:translateX(8px);}to{opacity:1;transform:translateX(0);}}
+.note-row:hover{background:var(--surf2);border-color:var(--border2);}
+[data-theme="day"] .note-row{background:rgba(180,210,235,.55);border-color:rgba(14,44,90,.22);}
+[data-theme="day"] .note-row:hover{background:rgba(150,185,220,.70);border-color:rgba(14,44,90,.42);}
+.row-name{font-size:22px;font-weight:800;line-height:1;min-width:44px;text-align:center;-webkit-flex-shrink:0;flex-shrink:0;}
+.row-data{font-family:'DM Mono','Courier New',monospace;-webkit-flex:1;flex:1;min-width:0;}
+.row-hz{font-size:13px;color:var(--line-played);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;}
+.row-tgt{font-size:11px;color:var(--line-ref);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;}
+[data-theme="day"] .row-hz{color:#a04c00;}
+[data-theme="day"] .row-tgt{color:#1a3870;}
+.row-badge{font-family:'DM Mono','Courier New',monospace;font-size:11px;padding:4px 8px;border-radius:4px;letter-spacing:.04em;white-space:nowrap;-webkit-flex-shrink:0;flex-shrink:0;font-weight:700;}
+[data-theme="night"] .badge-green{background:rgba(142,245,168,.16);color:#8ef5a8;border:2px solid rgba(142,245,168,.42);font-weight:800;}
+[data-theme="night"] .badge-warm{background:rgba(255,192,80,.14);color:#ffc050;border:2px solid rgba(255,192,80,.40);font-weight:800;}
+[data-theme="night"] .badge-cool{background:rgba(112,200,224,.14);color:#70c8e0;border:2px solid rgba(112,200,224,.40);font-weight:800;}
+[data-theme="night"] .badge-red{background:rgba(255,112,96,.14);color:#ff7060;border:2px solid rgba(255,112,96,.40);font-weight:800;}
+[data-theme="day"] .badge-green{background:rgba(10,110,48,.22);color:#074a1c;border:2px solid rgba(10,110,48,.58);font-weight:800;}
+[data-theme="day"] .badge-warm{background:rgba(160,76,0,.22);color:#6e3200;border:2px solid rgba(160,76,0,.58);font-weight:800;}
+[data-theme="day"] .badge-cool{background:rgba(26,56,112,.22);color:#0e2448;border:2px solid rgba(26,56,112,.58);font-weight:800;}
+[data-theme="day"] .badge-red{background:rgba(138,24,8,.22);color:#5a0a02;border:2px solid rgba(138,24,8,.58);font-weight:800;}
+.notes-empty{text-align:center;padding:40px 10px;font-family:'DM Mono','Courier New',monospace;font-size:14px;color:var(--text2);letter-spacing:.10em;line-height:2.0;font-weight:600;}
+[data-theme="day"] .notes-empty{color:#1a3858;font-weight:700;}
+
+/* ── OLD simple summary (kept for compat) ── */
+.summary-panel{display:none;}
+.summary-panel.show{display:block;}
+.summary-cards{display:-webkit-flex;display:flex;-webkit-flex-wrap:wrap;flex-wrap:wrap;gap:14px;}
+.sum-card{-webkit-flex:1 1 120px;flex:1 1 120px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:20px 16px;text-align:center;}
+[data-theme="day"] .sum-card{background:rgba(180,210,235,.55);border-color:rgba(14,44,90,.28);}
+.sum-val{font-size:38px;font-weight:800;letter-spacing:-0.02em;line-height:1;margin-bottom:9px;}
+.sum-lbl{font-family:'DM Mono','Courier New',monospace;font-size:12px;color:var(--text2);letter-spacing:.16em;text-transform:uppercase;font-weight:700;}
+[data-theme="day"] .sum-lbl{color:#1a3858;font-weight:800;}
+
+/* ── NEW: Premium score panel ── */
+.score-panel{display:none;}
+.score-panel.show{display:block;}
+
+.score-hero{
+  display:-webkit-flex;display:flex;
+  -webkit-align-items:center;align-items:center;
+  gap:28px;margin-bottom:22px;
+  -webkit-flex-wrap:wrap;flex-wrap:wrap;
+}
+.score-circle-wrap{-webkit-flex-shrink:0;flex-shrink:0;position:relative;width:110px;height:110px;}
+.score-circle-svg{width:110px;height:110px;}
+.score-circle-track{fill:none;stroke:var(--surf2);stroke-width:8;}
+.score-circle-fill{fill:none;stroke-width:8;stroke-linecap:round;-webkit-transition:stroke-dashoffset 1s cubic-bezier(.4,0,.2,1),stroke .4s;transition:stroke-dashoffset 1s cubic-bezier(.4,0,.2,1),stroke .4s;}
+.score-num{
+  position:absolute;top:50%;left:50%;
+  -webkit-transform:translate(-50%,-50%);transform:translate(-50%,-50%);
+  font-size:30px;font-weight:800;letter-spacing:-.02em;
+  color:var(--text);line-height:1;text-align:center;
+}
+.score-num span{display:block;font-family:'DM Mono','Courier New',monospace;font-size:10px;font-weight:600;color:var(--muted);letter-spacing:.12em;text-transform:uppercase;margin-top:2px;}
+
+.score-meta{-webkit-flex:1;flex:1;min-width:180px;}
+.score-rating{font-size:22px;font-weight:800;letter-spacing:-.01em;margin-bottom:6px;line-height:1.2;}
+.score-subtext{font-family:'DM Mono','Courier New',monospace;font-size:12px;color:var(--text2);line-height:1.7;font-weight:500;}
+
+/* Sub-scores */
+.sub-scores{display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column;gap:9px;margin-bottom:20px;}
+.sub-row{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:10px;}
+.sub-lbl{font-family:'DM Mono','Courier New',monospace;font-size:11px;color:var(--text2);letter-spacing:.10em;text-transform:uppercase;font-weight:700;min-width:140px;}
+.sub-bar-wrap{-webkit-flex:1;flex:1;height:5px;background:var(--surf2);border-radius:3px;overflow:hidden;}
+.sub-bar{height:100%;border-radius:3px;-webkit-transition:width 1s cubic-bezier(.4,0,.2,1);transition:width 1s cubic-bezier(.4,0,.2,1);}
+.sub-val{font-family:'DM Mono','Courier New',monospace;font-size:11px;font-weight:800;color:var(--text2);min-width:30px;text-align:right;}
+
+/* Best / worst notes */
+.score-highlights{
+  display:-webkit-flex;display:flex;gap:14px;
+  -webkit-flex-wrap:wrap;flex-wrap:wrap;
+  margin-bottom:20px;
+}
+.score-highlight-card{
+  -webkit-flex:1 1 180px;flex:1 1 180px;
+  background:var(--surface);border:2px solid var(--border);
+  border-radius:10px;padding:14px 16px;
+}
+[data-theme="day"] .score-highlight-card{background:rgba(178,205,228,.55);}
+.sh-label{font-family:'DM Mono','Courier New',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:6px;font-weight:700;}
+.sh-note{font-size:26px;font-weight:800;margin-bottom:2px;}
+.sh-desc{font-family:'DM Mono','Courier New',monospace;font-size:11px;color:var(--text2);line-height:1.5;font-weight:500;}
+
+/* Insight + recommendation */
+.score-insights{
+  background:var(--surface);border:2px solid var(--border);
+  border-radius:10px;padding:16px 18px;margin-bottom:16px;
+}
+[data-theme="day"] .score-insights{background:rgba(178,205,228,.55);}
+.insight-label{font-family:'DM Mono','Courier New',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted);margin-bottom:8px;font-weight:700;}
+.insight-text{font-size:14px;color:var(--text);line-height:1.7;font-weight:500;}
+.insight-text + .insight-text{margin-top:6px;}
+
+.score-recommendation{
+  background:var(--accent-dim);border:2px solid var(--accent);
+  border-radius:10px;padding:14px 18px;
+}
+[data-theme="day"] .score-recommendation{background:rgba(46,95,150,.14);border-color:var(--accent2);}
+.rec-label{font-family:'DM Mono','Courier New',monospace;font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent2);margin-bottom:6px;font-weight:700;}
+[data-theme="day"] .rec-label{color:#1a3e70;}
+.rec-text{font-size:14px;font-weight:700;color:var(--text);}
+
+/* Session history */
+.history-panel{display:none;}
+.history-panel.show{display:block;}
+.history-list{display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column;gap:6px;max-height:160px;overflow-y:auto;-webkit-overflow-scrolling:touch;}
+.history-row{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;justify-content:space-between;padding:8px 10px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-family:'DM Mono','Courier New',monospace;font-size:11px;}
+.history-date{color:var(--muted);font-weight:500;}
+.history-score{font-weight:800;font-size:14px;}
+.history-avg{color:var(--text2);font-weight:500;}
+
+/* ── Footer ── */
+.footer{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:space-between;justify-content:space-between;-webkit-flex-wrap:wrap;flex-wrap:wrap;gap:14px;margin-top:22px;padding-top:18px;border-top:1px solid var(--border);}
+.instrument-row{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:10px;-webkit-flex-wrap:wrap;flex-wrap:wrap;}
+.inst-lbl{font-family:'DM Mono','Courier New',monospace;font-size:12px;color:var(--text2);letter-spacing:.14em;text-transform:uppercase;font-weight:800;}
+[data-theme="day"] .inst-lbl{color:#1a3858;}
+.inst-tabs{display:-webkit-flex;display:flex;gap:5px;-webkit-flex-wrap:wrap;flex-wrap:wrap;}
+.inst-btn{font-family:'DM Mono','Courier New',monospace;font-size:12px;letter-spacing:.08em;text-transform:uppercase;padding:8px 15px;min-height:40px;border-radius:4px;border:2px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-weight:700;-webkit-tap-highlight-color:transparent;-webkit-appearance:none;appearance:none;-webkit-transition:all .18s;transition:all .18s;}
+.inst-btn.active{border-color:var(--accent2);color:var(--accent2);background:var(--accent-dim);font-weight:800;}
+.inst-btn:hover:not(.active),.inst-btn:focus:not(.active){border-color:var(--border2);color:var(--text);outline:none;}
+[data-theme="day"] .inst-btn{color:#1a3858;border-color:rgba(10,34,75,.42);background:rgba(10,34,75,.08);}
+[data-theme="day"] .inst-btn.active{border-color:#1a3e70;color:#1a3e70;background:rgba(46,95,150,.20);}
+.footer-right{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:12px;}
+.mono-warning{font-family:'DM Mono','Courier New',monospace;font-size:12px;color:var(--text2);display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:7px;font-weight:700;}
+[data-theme="day"] .mono-warning{color:#1a3858;font-weight:800;}
+.mono-warning::before{content:'⚠';color:var(--accent2);font-size:13px;}
+
+/* ── Fullscreen Modal ── */
+.overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(8,4,0,.94);z-index:500;display:none;-webkit-align-items:center;align-items:center;-webkit-justify-content:center;justify-content:center;padding:20px;padding-top:calc(20px + env(safe-area-inset-top));padding-bottom:calc(20px + env(safe-area-inset-bottom));}
+[data-theme="day"] .overlay{background:rgba(120,150,190,.90);}
+.overlay.open{display:-webkit-flex;display:flex;}
+.modal-box{border:1px solid var(--border2);border-radius:14px;width:100%;max-width:1200px;max-height:100%;padding:24px 24px 20px;position:relative;display:-webkit-flex;display:flex;-webkit-flex-direction:column;flex-direction:column;overflow:hidden;-webkit-box-shadow:0 8px 60px rgba(0,0,0,.6);box-shadow:0 8px 60px rgba(0,0,0,.6);}
+[data-theme="night"] .modal-box{background:#1a0e04;}
+[data-theme="day"]   .modal-box{background:#b8c8da;border-color:rgba(14,44,90,.45);}
+.modal-header{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:space-between;justify-content:space-between;margin-bottom:14px;-webkit-flex-shrink:0;flex-shrink:0;-webkit-flex-wrap:wrap;flex-wrap:wrap;gap:12px;}
+.modal-title{font-family:'DM Mono','Courier New',monospace;font-size:12px;letter-spacing:.20em;color:var(--muted);text-transform:uppercase;font-weight:600;}
+[data-theme="day"] .modal-title{color:#1e4060;font-weight:700;}
+.modal-legend{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:26px;padding:10px 18px;background:var(--surf2);border-radius:7px;border:1px solid var(--border);-webkit-flex-wrap:wrap;flex-wrap:wrap;}
+[data-theme="day"] .modal-legend{background:rgba(66,114,160,.16);border-color:rgba(14,44,90,.32);}
+.modal-leg-item{display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:12px;}
+.modal-swatch-played{width:44px;height:4px;border-radius:2px;background:var(--line-played);}
+.modal-swatch-ref{width:44px;height:0;border-top:3px dashed var(--line-ref);}
+.modal-leg-label{font-family:'DM Mono','Courier New',monospace;font-size:14px;font-weight:700;}
+.modal-leg-played{color:var(--line-played);}
+.modal-leg-ref{color:var(--line-ref);}
+[data-theme="day"] .modal-leg-played{color:#a04c00;}
+[data-theme="day"] .modal-leg-ref{color:#1a3870;}
+.modal-close{position:absolute;top:14px;right:14px;width:38px;height:38px;border-radius:5px;border:1px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-size:16px;display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;-webkit-justify-content:center;justify-content:center;-webkit-tap-highlight-color:transparent;-webkit-appearance:none;appearance:none;-webkit-transition:all .18s;transition:all .18s;}
+.modal-close:hover,.modal-close:focus{border-color:var(--red);color:var(--red);outline:none;}
+[data-theme="day"] .modal-close{color:#0e2440;border-color:rgba(14,44,90,.32);}
+#modalCanvas{display:block;width:100%;-webkit-flex:1;flex:1;min-height:300px;border-radius:7px;cursor:crosshair;}
+[data-theme="night"] #modalCanvas{background:rgba(0,0,0,.40);}
+[data-theme="day"]   #modalCanvas{background:rgba(14,44,90,.09);}
+
+/* ═══════════════════════════════════════════════════════════════
+   METRONOME PANEL
+   ═══════════════════════════════════════════════════════════════ */
+.metro-bar {
+  display:-webkit-flex; display:flex;
+  -webkit-align-items:center; align-items:center;
+  -webkit-flex-wrap:wrap; flex-wrap:wrap;
+  gap:14px; padding:13px 20px;
+  border-radius:12px; margin-bottom:18px;
+  border:2px solid var(--border);
+}
+[data-theme="night"] .metro-bar { background:rgba(30,14,2,.75); border-color:rgba(112,200,224,.35); }
+[data-theme="day"]   .metro-bar { background:rgba(26,56,112,.10); border-color:rgba(10,34,75,.40); }
+
+/* Section groups inside the metro bar */
+.metro-group {
+  display:-webkit-flex; display:flex;
+  -webkit-align-items:center; align-items:center;
+  gap:10px; -webkit-flex-wrap:wrap; flex-wrap:wrap;
+}
+.metro-group-label {
+  font-family:'DM Mono','Courier New',monospace;
+  font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--muted); font-weight:700;
+}
+
+/* BPM display + controls */
+.metro-bpm-display {
+  font-family:'DM Mono','Courier New',monospace;
+  font-size:28px; font-weight:800; letter-spacing:-.02em;
+  color:var(--text); min-width:64px; text-align:center;
+  line-height:1;
+}
+[data-theme="night"] .metro-bpm-display { color:#f0e0c0; }
+[data-theme="day"]   .metro-bpm-display { color:#040c18; }
+
+.metro-bpm-unit {
+  font-family:'DM Mono','Courier New',monospace;
+  font-size:11px; color:var(--muted); font-weight:700;
+  text-transform:uppercase; letter-spacing:.10em;
+}
+
+/* BPM nudge buttons */
+.metro-nudge {
+  width:32px; height:32px; border-radius:5px;
+  border:2px solid var(--border); background:var(--surface);
+  color:var(--text2); cursor:pointer; font-size:16px; font-weight:800;
+  display:-webkit-flex; display:flex; -webkit-align-items:center; align-items:center;
+  -webkit-justify-content:center; justify-content:center;
+  -webkit-tap-highlight-color:transparent; -webkit-appearance:none; appearance:none;
+  -webkit-transition:all .15s; transition:all .15s;
+}
+.metro-nudge:hover { background:var(--surf2); border-color:var(--border2); color:var(--text); }
+.metro-nudge:active { transform:scale(.92); }
+
+/* BPM slider */
+.metro-bpm-slider {
+  -webkit-appearance:none; appearance:none;
+  width:90px; height:4px; background:var(--surf2); border-radius:2px;
+  outline:none; cursor:pointer;
+}
+.metro-bpm-slider::-webkit-slider-thumb {
+  -webkit-appearance:none; width:16px; height:16px; border-radius:50%;
+  background:var(--cool); cursor:pointer;
+  box-shadow:0 0 8px rgba(112,200,224,.55);
+}
+.metro-bpm-slider::-moz-range-thumb {
+  width:16px; height:16px; border-radius:50%;
+  background:var(--cool); cursor:pointer; border:none;
+}
+
+/* Time signature tabs */
+.metro-sig-tabs { display:-webkit-flex; display:flex; gap:3px; }
+.metro-sig-btn {
+  font-family:'DM Mono','Courier New',monospace;
+  font-size:11px; letter-spacing:.06em; text-transform:uppercase;
+  padding:5px 10px; min-height:34px; border-radius:3px;
+  border:2px solid var(--border); background:transparent; color:var(--muted);
+  cursor:pointer; font-weight:700;
+  -webkit-tap-highlight-color:transparent; -webkit-appearance:none; appearance:none;
+  -webkit-transition:all .18s; transition:all .18s;
+}
+.metro-sig-btn.active {
+  border-color:var(--cool); color:var(--cool);
+  background:var(--cool-dim);
+}
+[data-theme="day"] .metro-sig-btn { color:#1a3858; border-color:rgba(10,34,75,.40); }
+[data-theme="day"] .metro-sig-btn.active { color:#1a3870; border-color:#1a3870; background:rgba(26,56,112,.14); }
+
+/* Tap Tempo */
+.btn-tap {
+  border-color:var(--cool); color:var(--cool);
+  background:var(--cool-dim);
+}
+.btn-tap:hover { background:rgba(112,200,224,.22); }
+[data-theme="day"] .btn-tap { border-color:#1a3870; color:#1a3870; background:rgba(26,56,112,.12); }
+
+/* Metro start/stop */
+.btn-metro-start {
+  border-color:var(--cool); color:var(--cool);
+  background:var(--cool-dim);
+}
+.btn-metro-start:hover { background:rgba(112,200,224,.22); box-shadow:0 0 16px rgba(112,200,224,.28); }
+[data-theme="day"] .btn-metro-start { border-color:#1a3870; color:#1a3870; background:rgba(26,56,112,.12); }
+.btn-metro-stop { border-color:var(--muted); color:var(--text); }
+
+/* Volume slider */
+.metro-vol-slider {
+  -webkit-appearance:none; appearance:none;
+  width:64px; height:4px; background:var(--surf2); border-radius:2px;
+  outline:none; cursor:pointer;
+}
+.metro-vol-slider::-webkit-slider-thumb {
+  -webkit-appearance:none; width:14px; height:14px; border-radius:50%;
+  background:var(--muted); cursor:pointer;
+}
+.metro-vol-slider::-moz-range-thumb {
+  width:14px; height:14px; border-radius:50%;
+  background:var(--muted); cursor:pointer; border:none;
+}
+
+/* Beat visualizer — row of beat dots */
+.metro-beat-row {
+  display:-webkit-flex; display:flex;
+  -webkit-align-items:center; align-items:center;
+  gap:7px; -webkit-flex-shrink:0; flex-shrink:0;
+}
+.beat-dot {
+  width:14px; height:14px; border-radius:50%;
+  background:var(--surf2); border:2px solid var(--border);
+  -webkit-transition:background .06s, box-shadow .06s, transform .06s;
+  transition:background .06s, box-shadow .06s, transform .06s;
+}
+/* Beat 1 is slightly larger */
+.beat-dot:first-child { width:18px; height:18px; }
+
+/* Lit states */
+.beat-dot.lit-accent {
+  background:#8ef5a8;
+  border-color:#8ef5a8;
+  box-shadow:0 0 14px rgba(142,245,168,.85), 0 0 30px rgba(142,245,168,.40);
+  -webkit-transform:scale(1.2); transform:scale(1.2);
+}
+[data-theme="day"] .beat-dot.lit-accent {
+  background:#0a6e30; border-color:#0a6e30;
+  box-shadow:0 0 10px rgba(10,110,48,.55);
+}
+.beat-dot.lit {
+  background:#70c8e0;
+  border-color:#70c8e0;
+  box-shadow:0 0 10px rgba(112,200,224,.75), 0 0 22px rgba(112,200,224,.30);
+  -webkit-transform:scale(1.1); transform:scale(1.1);
+}
+[data-theme="day"] .beat-dot.lit {
+  background:#1a3870; border-color:#1a3870;
+  box-shadow:0 0 8px rgba(26,56,112,.50);
+}
+
+/* Count-in badge */
+.metro-countin {
+  font-family:'DM Mono','Courier New',monospace;
+  font-size:11px; color:var(--muted); letter-spacing:.10em;
+  display:-webkit-flex; display:flex; -webkit-align-items:center; align-items:center; gap:6px;
+}
+.metro-countin input[type="checkbox"] { width:14px; height:14px; cursor:pointer; accent-color:var(--cool); }
+
+/* Metro divider */
+.metro-div { width:1px; height:32px; background:var(--border); -webkit-flex-shrink:0; flex-shrink:0; }
+@media(max-width:700px){ .metro-div{ display:none; } }
+
+/* Responsive */
+@media(max-width:860px){.col-side{-webkit-flex:1 1 100%;flex:1 1 100%;}.notes-panel{max-height:280px;-webkit-flex:1 1 100%;flex:1 1 100%;}.summary-panel,.score-panel,.history-panel{-webkit-flex:1 1 100%;flex:1 1 100%;}.note-name{font-size:80px;}}
+@media(max-width:580px){.app{padding:0 14px 80px;}.note-name{font-size:64px;min-height:72px;}.cents-value{font-size:24px;}.freq-row{font-size:13px;}.tuner-captions{font-size:10px;}.control-bar{gap:10px;}.rec-bar{gap:8px;}.score-hero{gap:16px;}.sub-lbl{min-width:100px;}.metro-bpm-slider{width:64px;}.metro-vol-slider{width:48px;}}
+@supports(padding-bottom:env(safe-area-inset-bottom)){.app{padding-bottom:calc(56px + env(safe-area-inset-bottom));}}
+</style>
+</head>
+<body>
+
+<div class="atmo" aria-hidden="true"></div>
+<div class="app">
+
+  <!-- Mic banner -->
+  <div class="mic-banner" id="micBanner" role="alert">
+    <strong>🎙 Microphone access needed</strong><br>
+    Your browser blocked mic access. To fix it:
+    <ul class="mic-steps" id="micSteps"><li>Loading instructions…</li></ul>
+  </div>
+
+  <!-- ── Header ── -->
+  <header class="header">
+    <div class="logo">
+      <span class="logo-wordmark">INTONE</span>
+      <span class="logo-sub">Live Intonation Analyzer</span>
+    </div>
+    <div class="header-right">
+      <div class="theme-toggle" id="themeToggle" role="button" tabindex="0" aria-label="Toggle day/night theme" title="Toggle (T)">
+        <span class="toggle-icon" aria-hidden="true">🌙</span>
+        <div class="toggle-track" aria-hidden="true"><div class="toggle-thumb"></div></div>
+        <span class="toggle-icon" aria-hidden="true">☀️</span>
+        <span class="toggle-label" id="toggleLabel">Night</span>
+      </div>
+      <div class="calibration">
+        <span class="calibration-label">A4 =</span>
+        <input type="range" id="a4Slider" min="438" max="442" step="0.5" value="440" aria-label="A4 calibration">
+        <span class="calibration-val" id="a4Val">440.0 Hz</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Tuner + Analyze control bar ── -->
+  <div class="control-bar">
+    <div class="tuner-ctrl">
+      <div class="mic-dot" id="micDot" aria-hidden="true"></div>
+      <button class="btn btn-tuner-on"  id="btnTunerOn"  aria-label="Turn tuner on">🎙 Tuner On</button>
+      <button class="btn btn-tuner-off" id="btnTunerOff" style="display:none" aria-label="Turn tuner off">🎙 Tuner Off</button>
+      <span class="tuner-state-label" id="tunerStateLabel">Mic off</span>
+    </div>
+    <div style="display:-webkit-flex;display:flex;-webkit-align-items:center;align-items:center;gap:14px;-webkit-flex:1;flex:1;-webkit-justify-content:center;justify-content:center;">
+      <div class="ctrl-status" id="ctrlStatus" role="status" aria-live="polite">Tap Tuner On to begin</div>
+      <button class="btn btn-reset" id="btnReset" disabled title="Clear all data and reset (R)" aria-label="Reset session">↺ Reset</button>
+    </div>
+    <div class="ctrl-divider"></div>
+    <div class="analyze-ctrl">
+      <div class="analyze-dot" id="analyzeDot" aria-hidden="true"></div>
+      <span class="analyze-label" id="analyzeLabel">Not recording</span>
+      <button class="btn btn-analyze-start" id="btnAnalyzeStart" disabled aria-label="Start analyzing">● Analyze</button>
+      <button class="btn btn-analyze-stop"  id="btnAnalyzeStop"  style="display:none" aria-label="Stop analyzing">■ Stop</button>
+    </div>
+  </div>
+
+  <!-- ── NEW: Recording bar ── -->
+  <div class="rec-bar">
+    <div class="rec-bar-left">
+      <!-- Record audio buttons -->
+      <button class="btn btn-record" id="btnRecord" disabled title="Record audio for playback sync" aria-label="Record audio">⏺ Record</button>
+      <button class="btn btn-record" id="btnRecStop" style="display:none" aria-label="Stop recording audio">⏹ Stop Rec</button>
+      <!-- Playback controls — only shown after recording -->
+      <button class="btn btn-play" id="btnPlay" style="display:none" disabled aria-label="Play recording">▶ Play</button>
+      <button class="btn btn-play" id="btnPause" style="display:none" aria-label="Pause playback">⏸ Pause</button>
+    </div>
+    <div class="rec-bar-centre">
+      <div class="rec-timer idle" id="recTimer">0:00</div>
+      <div class="rec-progress-wrap">
+        <div class="rec-progress-bar" id="recProgressBar"></div>
+      </div>
+    </div>
+    <div class="rec-bar-right">
+      <span class="rec-mode-label">Max:</span>
+      <div class="rec-mode-tabs">
+        <button class="rec-mode-btn active" data-dur="60"  id="recMode60">1 min</button>
+        <button class="rec-mode-btn"        data-dur="180" id="recMode180">3 min</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Metronome bar ── -->
+  <!--
+    Layout: [▶ Start | Beat dots]  [BPM –  120  + | slider]  [TimeSig]  [Tap]  [Vol | Count-in]
+    All timing uses Web Audio API scheduler (not setInterval) for accuracy.
+  -->
+  <div class="metro-bar" id="metroBar">
+
+    <!-- Start / Stop + beat visualizer -->
+    <div class="metro-group">
+      <button class="btn btn-metro-start" id="btnMetroStart" aria-label="Start metronome">♩ Metro</button>
+      <button class="btn btn-metro-stop"  id="btnMetroStop"  style="display:none" aria-label="Stop metronome">■ Stop</button>
+      <div class="metro-beat-row" id="metroBeatRow">
+        <!-- Dots populated by JS based on time signature -->
+      </div>
+    </div>
+
+    <div class="metro-div"></div>
+
+    <!-- BPM controls -->
+    <div class="metro-group">
+      <span class="metro-group-label">BPM</span>
+      <button class="metro-nudge" id="btnBpmDown" aria-label="Decrease BPM">−</button>
+      <div>
+        <div class="metro-bpm-display" id="metroBpmDisplay">120</div>
+      </div>
+      <button class="metro-nudge" id="btnBpmUp" aria-label="Increase BPM">+</button>
+      <input type="range" class="metro-bpm-slider" id="metroBpmSlider"
+             min="40" max="220" step="1" value="120" aria-label="BPM slider">
+      <span class="metro-bpm-unit">bpm</span>
+    </div>
+
+    <div class="metro-div"></div>
+
+    <!-- Time signature -->
+    <div class="metro-group">
+      <span class="metro-group-label">Sig</span>
+      <div class="metro-sig-tabs" id="metroSigTabs">
+        <button class="metro-sig-btn" data-beats="2">2/4</button>
+        <button class="metro-sig-btn" data-beats="3">3/4</button>
+        <button class="metro-sig-btn active" data-beats="4">4/4</button>
+        <button class="metro-sig-btn" data-beats="5">5/4</button>
+        <button class="metro-sig-btn" data-beats="6">6/8</button>
+      </div>
+    </div>
+
+    <div class="metro-div"></div>
+
+    <!-- Tap tempo + volume + count-in -->
+    <div class="metro-group">
+      <button class="btn btn-tap" id="btnTap" aria-label="Tap tempo">Tap</button>
+      <span class="metro-group-label" style="margin-left:4px">Vol</span>
+      <input type="range" class="metro-vol-slider" id="metroVolSlider"
+             min="0" max="1" step="0.05" value="0.7" aria-label="Metronome volume">
+      <label class="metro-countin" title="Play one measure count-in before recording">
+        <input type="checkbox" id="metroCountIn"> Count-in
+      </label>
+    </div>
+
+  </div><!-- /.metro-bar -->
+
+  <!-- ── Main Grid ── -->
+  <div class="main-grid">
+    <div class="col-main">
+
+      <!-- TUNER PANEL -->
+      <div class="panel">
+        <div class="panel-label">Live Tuner</div>
+        <div class="tuner-body">
+          <div class="note-name tuner-idle" id="noteName" aria-live="polite">—</div>
+          <div class="freq-row">
+            <span class="freq-played" id="freqPlayed">— Hz played</span>
+            <span aria-hidden="true" style="color:var(--muted)">·</span>
+            <span class="freq-ref" id="freqTarget">— Hz reference</span>
+          </div>
+          <div class="cents-value" id="centsVal">± 0.0 ¢</div>
+          <div class="tuner-wrap">
+            <div class="tuner-track-box">
+              <div class="tuner-rail" id="tunerRail"></div>
+              <div class="tuner-zone"></div>
+              <div class="tuner-ticks" id="tunerTicks"></div>
+              <div class="tuner-needle" id="needle"></div>
+            </div>
+            <div class="tuner-captions" aria-hidden="true">
+              <span>−50¢ flat</span><span>−25¢</span><span>in tune</span><span>+25¢</span><span>+50¢ sharp</span>
+            </div>
+          </div>
+          <div class="tuner-prompt" id="tunerPrompt">
+            Tap <strong>Tuner On</strong> and allow microphone access.<br>
+            The needle responds immediately — no analysis required.
+          </div>
+        </div>
+      </div>
+
+      <!-- GRAPH PANEL -->
+      <div class="panel">
+        <div class="graph-header">
+          <div class="panel-label" style="margin:0">Intonation Graph</div>
+          <div class="graph-mode-tabs" role="tablist">
+            <button class="tab-btn active" data-mode="intonation" role="tab" aria-selected="true">Cents</button>
+            <button class="tab-btn"        data-mode="frequency"  role="tab" aria-selected="false">Frequency</button>
+          </div>
+          <div class="graph-btn-row">
+            <button class="icon-btn" id="btnExpand" title="Fullscreen (E)" aria-label="Expand graph">⛶</button>
+          </div>
+        </div>
+        <div class="graph-legend" aria-hidden="true">
+          <div class="leg-item"><div class="leg-line-played"></div><span class="leg-label-played">Played pitch</span></div>
+          <div class="leg-item"><div class="leg-line-ref"></div><span class="leg-label-ref">Reference (ET)</span></div>
+        </div>
+        <!-- Canvas wrapped for playhead overlay -->
+        <div class="graph-canvas-wrap">
+          <canvas id="graphCanvas" role="img" aria-label="Intonation graph"></canvas>
+          <div class="graph-playhead" id="graphPlayhead"></div>
+        </div>
+        <!-- NEW: Playback scrubber (shown only when recording exists) -->
+        <div class="playback-bar" id="playbackBar" style="display:none">
+          <button class="btn btn-play" id="btnPlayGraph" style="padding:6px 12px;min-height:32px;font-size:11px;">▶</button>
+          <input type="range" class="playback-scrub" id="playbackScrub" min="0" max="100" step="0.1" value="0" aria-label="Playback position">
+          <span class="playback-time" id="playbackTime">0:00 / 0:00</span>
+        </div>
+        <div class="graph-nudge" id="graphNudge">Press <strong>● Analyze</strong> to start recording note events</div>
+      </div>
+
+    </div><!-- /.col-main -->
+
+    <div class="col-side">
+
+      <!-- NOTE LIST -->
+      <div class="panel notes-panel">
+        <div class="panel-label">Note History</div>
+        <div class="notes-scroll" id="notesList" role="list">
+          <div class="notes-empty">Note history will appear here once you start analyzing.</div>
+        </div>
+      </div>
+
+      <!-- OLD simple summary (fallback) -->
+      <div class="panel summary-panel" id="summaryPanel" aria-live="polite">
+        <div class="panel-label">Quick Stats</div>
+        <div class="summary-cards">
+          <div class="sum-card"><div class="sum-val" id="sumTotal">0</div><div class="sum-lbl">Notes</div></div>
+          <div class="sum-card"><div class="sum-val" id="sumPct" style="color:var(--green)">0%</div><div class="sum-lbl">In Tune ±10¢</div></div>
+          <div class="sum-card"><div class="sum-val" id="sumAvg">0¢</div><div class="sum-lbl">Avg Dev</div></div>
+          <div class="sum-card"><div class="sum-val" id="sumBias">—</div><div class="sum-lbl">Tendency</div></div>
+        </div>
+      </div>
+
+      <!-- NEW: Premium score panel -->
+      <div class="panel score-panel" id="scorePanel">
+        <div class="panel-label">Intonation Score</div>
+
+        <div class="score-hero">
+          <div class="score-circle-wrap">
+            <svg class="score-circle-svg" viewBox="0 0 110 110">
+              <circle class="score-circle-track" cx="55" cy="55" r="46"/>
+              <circle class="score-circle-fill" id="scoreCircleFill" cx="55" cy="55" r="46"
+                stroke-dasharray="289" stroke-dashoffset="289"
+                stroke="#8ef5a8" transform="rotate(-90 55 55)"/>
+            </svg>
+            <div class="score-num" id="scoreNum">—<span id="scoreMax"></span></div>
+          </div>
+          <div class="score-meta">
+            <div class="score-rating" id="scoreRating">—</div>
+            <div class="score-subtext" id="scoreSubtext"></div>
+          </div>
+        </div>
+
+        <div class="sub-scores">
+          <div class="sub-row">
+            <span class="sub-lbl">Pitch Accuracy</span>
+            <div class="sub-bar-wrap"><div class="sub-bar" id="barAccuracy" style="width:0%;background:#8ef5a8;"></div></div>
+            <span class="sub-val" id="valAccuracy">—</span>
+          </div>
+          <div class="sub-row">
+            <span class="sub-lbl">Stability</span>
+            <div class="sub-bar-wrap"><div class="sub-bar" id="barStability" style="width:0%;background:#70c8e0;"></div></div>
+            <span class="sub-val" id="valStability">—</span>
+          </div>
+          <div class="sub-row">
+            <span class="sub-lbl">Attack Accuracy</span>
+            <div class="sub-bar-wrap"><div class="sub-bar" id="barAttack" style="width:0%;background:#ffc050;"></div></div>
+            <span class="sub-val" id="valAttack">—</span>
+          </div>
+          <div class="sub-row">
+            <span class="sub-lbl">Drift Control</span>
+            <div class="sub-bar-wrap"><div class="sub-bar" id="barDrift" style="width:0%;background:#f0b050;"></div></div>
+            <span class="sub-val" id="valDrift">—</span>
+          </div>
+        </div>
+
+        <div class="score-highlights" id="scoreHighlights">
+          <div class="score-highlight-card">
+            <div class="sh-label">Most In Tune</div>
+            <div class="sh-note" id="shBestNote" style="color:#8ef5a8;">—</div>
+            <div class="sh-desc" id="shBestDesc">—</div>
+          </div>
+          <div class="score-highlight-card">
+            <div class="sh-label">Least In Tune</div>
+            <div class="sh-note" id="shWorstNote" style="color:#ff7060;">—</div>
+            <div class="sh-desc" id="shWorstDesc">—</div>
+          </div>
+        </div>
+
+        <div class="score-insights">
+          <div class="insight-label">Observations</div>
+          <div class="insight-text" id="insightText1"></div>
+          <div class="insight-text" id="insightText2"></div>
+          <div class="insight-text" id="insightText3" style="margin-top:4px;font-family:'DM Mono','Courier New',monospace;font-size:11px;color:var(--muted);"></div>
+        </div>
+
+        <div class="score-recommendation">
+          <div class="rec-label">Focus Next On</div>
+          <div class="rec-text" id="recText">—</div>
+        </div>
+      </div>
+
+      <!-- NEW: Session history -->
+      <div class="panel history-panel" id="historyPanel">
+        <div class="panel-label">Recent Sessions</div>
+        <div class="history-list" id="historyList"></div>
+      </div>
+
+    </div><!-- /.col-side -->
+  </div>
+
+  <!-- Footer -->
+  <footer class="footer">
+    <div class="instrument-row">
+      <span class="inst-lbl">Mode:</span>
+      <div class="inst-tabs" id="instTabs" role="group" aria-label="Instrument mode">
+        <button class="inst-btn active" data-inst="voice">Voice</button>
+        <button class="inst-btn"        data-inst="bass">Bass</button>
+        <button class="inst-btn"        data-inst="violin">Violin</button>
+        <button class="inst-btn"        data-inst="brass">Brass</button>
+      </div>
+    </div>
+    <div class="footer-right">
+      <span class="mono-warning">Monophonic only — chords reduce accuracy</span>
+      <button class="btn" id="btnExport" style="display:none">↓ Export CSV</button>
+    </div>
+  </footer>
+
+</div><!-- /.app -->
+
+<!-- Fullscreen Modal -->
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-label="Expanded graph view">
+  <div class="modal-box">
+    <button class="modal-close" id="btnModalClose" aria-label="Close">✕</button>
+    <div class="modal-header">
+      <div class="modal-title">Intonation Graph — Expanded View</div>
+      <div class="modal-legend" aria-hidden="true">
+        <div class="modal-leg-item"><div class="modal-swatch-played"></div><span class="modal-leg-label modal-leg-played">Played pitch</span></div>
+        <div class="modal-leg-item"><div class="modal-swatch-ref"></div><span class="modal-leg-label modal-leg-ref">Reference / ET</span></div>
+      </div>
+    </div>
+    <canvas id="modalCanvas" role="img" aria-label="Expanded intonation graph"></canvas>
+  </div>
+</div>
+
+<!-- Hidden audio element for playback -->
+<audio id="audioPlayer" style="display:none"></audio>
+
+<!-- ============================================================
+     INTONE v9 JavaScript
+     ============================================================ -->
+<script>
+'use strict';
+
+/* ── Browser / feature detection ── */
+var UA        = navigator.userAgent || '';
+var isIOS     = /iPad|iPhone|iPod/.test(UA) && !window.MSStream;
+var isIPadOS  = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+var isSafari  = /^((?!chrome|android).)*safari/i.test(UA);
+var isEdge    = /Edg\/|Edge\//.test(UA);
+var AudioCtxClass = window.AudioContext || window.webkitAudioContext || null;
+
+function resolveGUM() {
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
+    return function(c) { return navigator.mediaDevices.getUserMedia(c); };
+  var leg = navigator.getUserMedia || navigator.webkitGetUserMedia ||
+            navigator.mozGetUserMedia || navigator.msGetUserMedia;
+  if (leg) return function(c) { return new Promise(function(res,rej){ leg.call(navigator,c,res,rej); }); };
+  return null;
+}
+var doGUM = resolveGUM();
+
+/* ── Canvas colour helper ── */
+function C() {
+  var n = document.documentElement.getAttribute('data-theme') === 'night';
+  return {
+    night: n,
+    played: n ? '#f0b050' : '#a04c00',
+    ref:    n ? '#70c8e0' : '#1a3870',
+    green:  n ? '#8ef5a8' : '#0a6e30',
+    amber:  n ? '#ffc050' : '#8c4800',
+    red:    n ? '#ff7060' : '#8a1808',
+    muted:  n ? '#907040' : '#1a3858',
+    gridLn: n ? 'rgba(220,160,70,0.14)'  : 'rgba(10,34,75,0.18)',
+    zeroLn: n ? 'rgba(240,176,80,0.60)'  : 'rgba(160,76,0,0.60)',
+    band:   n ? 'rgba(142,245,168,0.08)' : 'rgba(10,110,48,0.10)',
+    bgFill: n ? 'rgba(0,0,0,0.40)'       : 'rgba(10,34,75,0.11)',
+    labA:   n ? 'rgba(240,224,192,0.82)' : 'rgba(4,12,24,0.88)',
+    labB:   n ? 'rgba(240,224,192,0.50)' : 'rgba(4,12,24,0.55)',
+    evLn:   n ? 'rgba(220,160,70,0.10)'  : 'rgba(10,34,75,0.14)',
+    playhead: n ? 'rgba(255,255,255,0.80)' : 'rgba(10,34,75,0.80)',
+    highlight: n ? 'rgba(240,176,80,0.14)' : 'rgba(66,114,160,0.16)',
+    gP:     n ? 'rgba(240,176,80,'       : 'rgba(160,76,0,',
+    gR:     n ? 'rgba(112,200,224,'      : 'rgba(26,56,112,',
+  };
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INSTRUMENT PROFILES
+   Adjusted per instrument: frequency range, noise gate,
+   smoothing constant, feedback wording prefix.
+═══════════════════════════════════════════════════════════════ */
+var INST = {
+  voice:  { minHz:75,  maxHz:1100, gate:.010, smooth:.84,
+    attackNote:'entries begin', driftNote:'pitch settles', tendencyNote:'pitch' },
+  bass:   { minHz:28,  maxHz:380,  gate:.013, smooth:.88,
+    attackNote:'attacks are', driftNote:'notes tend to', tendencyNote:'pitch' },
+  violin: { minHz:180, maxHz:3500, gate:.008, smooth:.79,
+    attackNote:'entries begin', driftNote:'upper register notes', tendencyNote:'intonation' },
+  brass:  { minHz:55,  maxHz:1600, gate:.010, smooth:.83,
+    attackNote:'attacks are', driftNote:'sustained notes', tendencyNote:'pitch' },
+};
+
+/* ═══════════════════════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════════════════════ */
+var audioCtx, analyser, srcNode, mediaStream;
+var rafId = null;
+var tunerOn = false, analyzing = false;
+var a4 = 440, graphMode = 'intonation';
+var instKey = 'voice', instProfile = INST.voice;
+
+/* Pitch smoothing */
+var pitchBuf = [], smoothedPitch = 0;
+var PITCH_BUF_LEN = 6;
+
+/* Note events — each is a timestamped group of sustained frames */
+var noteEvents = [];       /* confirmed note events (timestamped)  */
+var pendingMidi = null, pendingHz = 0, pendingFrames = 0, lastConfirmed = -99;
+var STABILITY = 9, NEW_NOTE_SEMITONES = 0.65;
+
+/* Recording (performance optimisation: store frames sparsely) */
+var recStartTime = 0;      /* performance.now() when analysis began  */
+var recMaxDur = 60;        /* 60 or 180 seconds                      */
+var recTimerInterval = null;
+var recElapsed = 0;
+
+/* MediaRecorder for audio capture */
+var mediaRecorder = null;
+var audioChunks = [];      /* chunked blobs from MediaRecorder       */
+var audioBlob = null;      /* final blob for playback                */
+var recordingActive = false;
+
+/* Playback */
+var audioPlayer = document.getElementById('audioPlayer');
+var playbackRafId = null;
+
+/* Throttle graph redraws: don't redraw more than ~30fps */
+var lastRedrawTime = 0;
+var REDRAW_THROTTLE = 33; /* ms */
+
+/* Playhead time (seconds) for graph sync */
+var playheadTime = -1;
+var activeNoteIdx = -1;
+
+/* ═══════════════════════════════════════════════════════════════
+   MUSIC MATH
+═══════════════════════════════════════════════════════════════ */
+var NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+function freqToMidi(f)  { return 12 * Math.log2(f / a4) + 69; }
+function midiToFreq(n)  { return a4 * Math.pow(2, (n - 69) / 12); }
+function midiToName(n)  { return NOTE_NAMES[((n % 12) + 12) % 12] + (Math.floor(n / 12) - 1); }
+function centsDev(p, r) { return 1200 * Math.log2(p / r); }
+function medianOf(a)    {
+  var s = a.slice().sort(function(x,y){return x-y;}), m = s.length >> 1;
+  return s.length % 2 ? s[m] : (s[m-1]+s[m])/2;
+}
+function niceStep(r) {
+  var p = Math.pow(10, Math.floor(Math.log10(r))), f = r/p;
+  return (f<1.5?1:f<3?2:f<7?5:10)*p;
+}
+function midiNoteClass(midi) { return NOTE_NAMES[((midi % 12) + 12) % 12]; }
+function midiRegister(midi)  {
+  /* low = below E3(52), mid = E3–B4(71), high = above */
+  if (midi < 52) return 'low';
+  if (midi <= 71) return 'mid';
+  return 'high';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PITCH DETECTION — autocorrelation + parabolic interpolation
+═══════════════════════════════════════════════════════════════ */
+function detectPitch(buf, rate) {
+  var N = buf.length, rms = 0, i, lag, s;
+  for (i = 0; i < N; i++) rms += buf[i] * buf[i];
+  if (Math.sqrt(rms/N) < instProfile.gate) return null;
+
+  var minP = Math.floor(rate / instProfile.maxHz);
+  var maxP = Math.min(Math.floor(rate / instProfile.minHz), N >> 1);
+  var acf  = new Float32Array(maxP + 1);
+
+  for (lag = minP; lag <= maxP; lag++) {
+    s = 0;
+    for (i = 0; i < N - lag; i++) s += buf[i] * buf[i + lag];
+    acf[lag] = s;
+  }
+  var acf0 = 0;
+  for (i = 0; i < N; i++) acf0 += buf[i] * buf[i];
+
+  /* Skip initial trough (McLeod trick) */
+  var d = minP;
+  while (d < maxP - 1 && acf[d] > acf[d+1]) d++;
+  var best = d, bv = acf[d];
+  for (lag = d; lag <= maxP; lag++) { if (acf[lag] > bv) { bv = acf[lag]; best = lag; } }
+  if (acf0 === 0 || bv / acf0 < 0.50) return null;
+
+  /* Parabolic interpolation for sub-sample accuracy */
+  if (best > minP && best < maxP) {
+    var al = acf[best-1], be = acf[best], ga = acf[best+1], d2 = al - 2*be + ga;
+    if (d2 !== 0) best += (al - ga) / (2 * d2);
+  }
+  return rate / best;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AUDIO LOOP — pitch detection + note grouping
+   Performance: throttle redraws; keep note event list lean.
+═══════════════════════════════════════════════════════════════ */
+function audioLoop() {
+  if (!tunerOn) return;
+  var buf = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(buf);
+  var freq = detectPitch(buf, audioCtx.sampleRate);
+
+  if (freq !== null) {
+    pitchBuf.push(freq);
+    if (pitchBuf.length > PITCH_BUF_LEN) pitchBuf.shift();
+    var med = medianOf(pitchBuf);
+    smoothedPitch = smoothedPitch ? smoothedPitch * 0.72 + med * 0.28 : med;
+    updateTunerUI(smoothedPitch);
+    if (analyzing) trackNoteEvent(smoothedPitch);
+  } else {
+    pitchBuf = []; smoothedPitch = 0; pendingMidi = null; pendingFrames = 0;
+    resetTunerDisplay();
+  }
+  rafId = requestAnimationFrame(audioLoop);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TUNER DISPLAY
+═══════════════════════════════════════════════════════════════ */
+function updateTunerUI(freq) {
+  var midi   = Math.round(freqToMidi(freq));
+  var target = midiToFreq(midi);
+  var cents  = centsDev(freq, target);
+  var abs    = Math.abs(cents);
+
+  document.getElementById('noteName').textContent   = midiToName(midi);
+  document.getElementById('freqPlayed').textContent = freq.toFixed(2) + ' Hz played';
+  document.getElementById('freqTarget').textContent = target.toFixed(2) + ' Hz reference';
+  document.getElementById('centsVal').textContent   = (cents >= 0 ? '+' : '') + cents.toFixed(1) + ' ¢';
+
+  var cls = abs < 10 ? 'in-tune' : abs < 25 ? 'near-tune' : 'off-tune';
+  document.getElementById('noteName').className = 'note-name ' + cls;
+  document.getElementById('centsVal').className = 'cents-value ' + cls;
+  setNeedle(cents);
+}
+
+function resetTunerDisplay() {
+  document.getElementById('noteName').textContent   = '—';
+  document.getElementById('noteName').className     = 'note-name tuner-idle';
+  document.getElementById('freqPlayed').textContent = '— Hz played';
+  document.getElementById('freqTarget').textContent = '— Hz reference';
+  document.getElementById('centsVal').textContent   = '± 0.0 ¢';
+  document.getElementById('centsVal').className     = 'cents-value';
+  setNeedle(0);
+}
+
+function setNeedle(cents) {
+  var cl  = Math.max(-50, Math.min(50, cents));
+  var pct = ((cl + 50) / 100) * 88 + 6;
+  var nd  = document.getElementById('needle');
+  var abs = Math.abs(cents);
+  nd.style.left = pct + '%';
+  if (!tunerOn) { nd.style.background = '#6a4c28'; nd.style.boxShadow = 'none'; return; }
+  if (abs < 10)      { nd.style.background='#8ef5a8'; nd.style.boxShadow='0 0 22px rgba(110,230,140,0.95),0 0 55px rgba(110,230,140,0.55)'; }
+  else if (abs < 25) { nd.style.background='#ffc050'; nd.style.boxShadow='0 0 22px rgba(255,176,60,0.85),0 0 44px rgba(255,176,60,0.35)'; }
+  else               { nd.style.background='#ff7060'; nd.style.boxShadow='0 0 22px rgba(255,100,80,0.85),0 0 44px rgba(255,100,80,0.35)'; }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   NOTE EVENT DETECTION
+   Groups sustained pitches into single events with timestamps.
+   A new note fires when pitch shifts > NEW_NOTE_SEMITONES or
+   after silence. Each confirmed event stores time-range data.
+═══════════════════════════════════════════════════════════════ */
+function nowSec() {
+  /* Time in seconds since analysis began */
+  return (performance.now() - recStartTime) / 1000;
+}
+
+function trackNoteEvent(freq) {
+  var fMidi = freqToMidi(freq), iMidi = Math.round(fMidi);
+  if (pendingMidi === null) {
+    pendingMidi = iMidi; pendingHz = freq; pendingFrames = 1;
+    return;
+  }
+  if (Math.abs(pendingMidi - fMidi) <= NEW_NOTE_SEMITONES) {
+    pendingHz     = pendingHz * 0.8 + freq * 0.2;
+    pendingFrames++;
+    if (pendingFrames === STABILITY && iMidi !== lastConfirmed) {
+      confirmNoteEvent(iMidi, pendingHz);
+      lastConfirmed = iMidi;
+    }
+  } else {
+    /* Close the running pending event before starting a new one */
+    pendingMidi   = iMidi; pendingHz = freq;
+    pendingFrames = 1;     lastConfirmed = -99;
+  }
+}
+
+function confirmNoteEvent(midi, hz) {
+  var target = midiToFreq(midi);
+  var cents  = centsDev(hz, target);
+  var t      = nowSec();
+  /* Duration estimate: STABILITY frames at ~23ms each ≈ 0.2s */
+  var ev = {
+    name:     midiToName(midi),
+    midi:     midi,
+    hz:       hz,
+    target:   target,
+    cents:    cents,
+    timeStart: Math.max(0, t - 0.25),  /* back-estimated start  */
+    timeEnd:   t,
+    register:  midiRegister(midi),
+    noteClass: midiNoteClass(midi),
+  };
+  noteEvents.push(ev);
+  prependNoteRow(ev, noteEvents.length - 1);
+  updateResetBtn();
+
+  /* Throttled graph redraw — don't hammer canvas on dense passages */
+  var now = performance.now();
+  if (now - lastRedrawTime > REDRAW_THROTTLE) {
+    lastRedrawTime = now;
+    redrawAll();
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   NOTE ROW UI
+═══════════════════════════════════════════════════════════════ */
+function prependNoteRow(ev, idx) {
+  var list = document.getElementById('notesList');
+  var ph   = list.querySelector('.notes-empty');
+  if (ph) ph.parentNode.removeChild(ph);
+
+  var abs  = Math.abs(ev.cents), sign = ev.cents >= 0 ? '+' : '';
+  var cls, txt;
+  if (abs < 10)          { cls='badge-green'; txt='In tune'; }
+  else if (ev.cents > 0) { cls = abs<25 ? 'badge-warm' : 'badge-red'; txt = sign+ev.cents.toFixed(1)+'¢'; }
+  else                   { cls = abs<25 ? 'badge-cool' : 'badge-red'; txt = ev.cents.toFixed(1)+'¢'; }
+
+  var col = C();
+  var nameColor, nameStyle = '';
+  if (abs < 10) {
+    nameColor = col.green;
+    nameStyle = ' text-shadow:0 0 14px ' + col.gP + '0.70),0 0 30px ' + col.gP + '0.30);';
+  } else if (abs < 25) { nameColor = col.amber; }
+  else                  { nameColor = col.red; }
+
+  var row = document.createElement('div');
+  row.className = 'note-row';
+  row.setAttribute('role', 'listitem');
+  row.setAttribute('data-idx', idx);
+  /* Show timestamp if we have recording context */
+  var timeStr = recStartTime > 0 ? ' · ' + fmtTime(ev.timeStart) : '';
+  row.innerHTML =
+    '<div class="row-name" style="color:' + nameColor + ';' + nameStyle + '">' + ev.name + '</div>' +
+    '<div class="row-data">' +
+      '<div class="row-hz">' + ev.hz.toFixed(1) + ' Hz' + timeStr + '</div>' +
+      '<div class="row-tgt">→ ' + ev.target.toFixed(1) + ' Hz</div>' +
+    '</div>' +
+    '<div class="row-badge ' + cls + '">' + txt + '</div>';
+  list.insertBefore(row, list.firstChild);
+}
+
+function fmtTime(s) {
+  var m = Math.floor(s / 60), ss = Math.floor(s % 60);
+  return m + ':' + (ss < 10 ? '0' : '') + ss;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GRAPH — time-based x-axis, throttled redraws
+   Both modes share the same time axis (seconds since start).
+   If no timing data exists (tuner-only mode), falls back to
+   event-index x-axis like v8.
+═══════════════════════════════════════════════════════════════ */
+function redrawAll() {
+  drawGraph(document.getElementById('graphCanvas'), false);
+  if (document.getElementById('overlay').className.indexOf('open') !== -1) {
+    drawGraph(document.getElementById('modalCanvas'), true);
+  }
+}
+
+function drawGraph(canvas, isModal) {
+  var dpr  = window.devicePixelRatio || 1;
+  var rect = canvas.getBoundingClientRect();
+  if (rect.width < 10 || rect.height < 10) return;
+  canvas.width  = Math.round(rect.width  * dpr);
+  canvas.height = Math.round(rect.height * dpr);
+  var ctx = canvas.getContext('2d');
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  var W = rect.width, H = rect.height, col = C();
+  ctx.fillStyle = col.bgFill; ctx.fillRect(0, 0, W, H);
+  if (graphMode === 'intonation') drawCents(ctx, W, H, isModal, col);
+  else                             drawFreq (ctx, W, H, isModal, col);
+}
+
+/* ── Time-aware x coordinate helper ── */
+function makeXHelper(evs, GW, PAD, useTimes) {
+  if (useTimes && evs.length > 0) {
+    var tMin = evs[0].timeStart;
+    var tMax = evs[evs.length-1].timeStart;
+    var span = tMax - tMin || 1;
+    return function(i) { return PAD.l + ((evs[i].timeStart - tMin) / span) * GW; };
+  } else {
+    return function(i) { return PAD.l + (evs.length > 1 ? (i / (evs.length-1)) * GW : GW/2); };
+  }
+}
+
+/* ── Draw cents deviation graph ── */
+function drawCents(ctx, W, H, isModal, col) {
+  var evs = noteEvents;
+  var fs  = isModal ? 15 : 12;
+  var PAD = isModal ? {l:68,r:24,t:34,b:58} : {l:52,r:14,t:22,b:46};
+  var GW  = W - PAD.l - PAD.r, GH = H - PAD.t - PAD.b;
+  var yMin = -60, yMax = 60;
+  var useTimes = evs.length > 0 && evs[0].timeStart !== undefined && recStartTime > 0;
+  function yAt(c) { return PAD.t + GH - ((c - yMin) / (yMax - yMin)) * GH; }
+  var xAt = makeXHelper(evs, GW, PAD, useTimes);
+
+  if (!evs.length) {
+    ctx.fillStyle = col.muted; ctx.font = (fs+4) + "px 'DM Mono','Courier New',monospace";
+    ctx.textAlign = 'center'; ctx.fillText('Start Analyzing to record notes', W/2, H/2); return;
+  }
+
+  /* Grid lines */
+  var ticks = [-50,-40,-30,-20,-10,0,10,20,30,40,50], ti, c, y;
+  for (ti = 0; ti < ticks.length; ti++) {
+    c = ticks[ti]; y = yAt(c);
+    ctx.strokeStyle = col.gridLn; ctx.lineWidth = 1; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(PAD.l + GW, y); ctx.stroke();
+    ctx.fillStyle = col.labA; ctx.font = fs + "px 'DM Mono','Courier New',monospace";
+    ctx.textAlign = 'right'; ctx.fillText((c>0?'+':'')+c, PAD.l-8, y + fs*0.36);
+  }
+
+  /* Zero reference */
+  var y0 = yAt(0);
+  ctx.strokeStyle = col.zeroLn; ctx.lineWidth = 1.5; ctx.setLineDash([7,5]);
+  ctx.beginPath(); ctx.moveTo(PAD.l, y0); ctx.lineTo(PAD.l+GW, y0); ctx.stroke(); ctx.setLineDash([]);
+
+  /* ±10¢ band */
+  var y10p = yAt(10), y10m = yAt(-10);
+  var bG = ctx.createLinearGradient(0, y10p, 0, y10m);
+  bG.addColorStop(0,   col.band.replace(/[\d.]+\)$/, '0)'));
+  bG.addColorStop(0.5, col.band);
+  bG.addColorStop(1,   col.band.replace(/[\d.]+\)$/, '0)'));
+  ctx.fillStyle = bG; ctx.fillRect(PAD.l, y10p, GW, y10m - y10p);
+
+  /* Event vertical dividers */
+  var ii;
+  for (ii = 0; ii < evs.length; ii++) {
+    ctx.strokeStyle = col.evLn; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(xAt(ii), PAD.t); ctx.lineTo(xAt(ii), PAD.t+GH); ctx.stroke();
+  }
+
+  /* Playhead highlight band */
+  if (playheadTime >= 0 && useTimes && evs.length > 0) {
+    var tMin2 = evs[0].timeStart, span2 = (evs[evs.length-1].timeStart - tMin2) || 1;
+    var xph = PAD.l + ((playheadTime - tMin2) / span2) * GW;
+    if (xph >= PAD.l && xph <= PAD.l + GW) {
+      ctx.fillStyle = col.highlight;
+      ctx.fillRect(xph - 18, PAD.t, 36, GH);
+    }
+    /* Active note highlight */
+    if (activeNoteIdx >= 0 && activeNoteIdx < evs.length) {
+      var ax = xAt(activeNoteIdx);
+      ctx.fillStyle = col.highlight;
+      ctx.fillRect(ax - 18, PAD.t, 36, GH);
+    }
+  }
+
+  /* Connecting line */
+  if (evs.length > 1) {
+    ctx.beginPath();
+    for (ii = 0; ii < evs.length; ii++) {
+      var xj = xAt(ii), yj = yAt(evs[ii].cents);
+      ii === 0 ? ctx.moveTo(xj, yj) : ctx.lineTo(xj, yj);
+    }
+    ctx.strokeStyle = col.played + '70'; ctx.lineWidth = 1.5; ctx.setLineDash([]); ctx.stroke();
+  }
+
+  /* Dots */
+  for (ii = 0; ii < evs.length; ii++) {
+    var e = evs[ii], xk = xAt(ii), yk = yAt(e.cents), absc = Math.abs(e.cents);
+    var ec = absc < 10 ? col.green : absc < 25 ? col.amber : col.red;
+    var r  = isModal ? 7 : 5;
+    ctx.beginPath(); ctx.arc(xk, yk, r+(isModal?8:6), 0, Math.PI*2); ctx.fillStyle = ec+'28'; ctx.fill();
+    ctx.beginPath(); ctx.arc(xk, yk, r, 0, Math.PI*2); ctx.fillStyle = ec; ctx.fill();
+    ctx.beginPath(); ctx.arc(xk-r*.3, yk-r*.3, r*.3, 0, Math.PI*2); ctx.fillStyle='rgba(255,255,255,0.5)'; ctx.fill();
+    if (isModal || evs.length <= 16) {
+      ctx.fillStyle = ec; ctx.font = (isModal?12:10) + "px 'DM Mono','Courier New',monospace";
+      ctx.textAlign = 'center';
+      ctx.fillText((e.cents>=0?'+':'')+e.cents.toFixed(1)+'¢', xk, e.cents>=0 ? yk-r-8 : yk+r+(isModal?17:13));
+    }
+    ctx.fillStyle = col.labA; ctx.font = (isModal?14:fs) + "px 'DM Mono','Courier New',monospace";
+    ctx.textAlign = 'center'; ctx.fillText(e.name, xk, PAD.t+GH+(isModal?30:22));
+  }
+
+  /* Axis labels */
+  ctx.fillStyle = col.labB; ctx.font = fs + "px 'DM Mono','Courier New',monospace";
+  ctx.textAlign = 'center';
+  ctx.fillText(useTimes ? 'time (s)' : 'note events', PAD.l+GW/2, H-(isModal?12:6));
+  ctx.save(); ctx.translate(12, PAD.t+GH/2); ctx.rotate(-Math.PI/2);
+  ctx.fillText('cents deviation', 0, 0); ctx.restore();
+
+  /* Playhead line (drawn last, on top) */
+  if (playheadTime >= 0 && useTimes && evs.length > 0) {
+    var tMin3 = evs[0].timeStart, span3 = (evs[evs.length-1].timeStart - tMin3) || 1;
+    var xph2 = PAD.l + ((playheadTime - tMin3) / span3) * GW;
+    if (xph2 >= PAD.l && xph2 <= PAD.l + GW) {
+      ctx.strokeStyle = col.playhead; ctx.lineWidth = 2; ctx.setLineDash([]);
+      ctx.beginPath(); ctx.moveTo(xph2, PAD.t); ctx.lineTo(xph2, PAD.t+GH); ctx.stroke();
+    }
+  }
+}
+
+/* ── Draw frequency graph ── */
+function drawFreq(ctx, W, H, isModal, col) {
+  var evs = noteEvents;
+  var fs  = isModal ? 15 : 12;
+  var PAD = isModal ? {l:88,r:26,t:34,b:58} : {l:72,r:18,t:24,b:46};
+  var GW  = W - PAD.l - PAD.r, GH = H - PAD.t - PAD.b;
+  var useTimes = evs.length > 0 && evs[0].timeStart !== undefined && recStartTime > 0;
+  var xAt = makeXHelper(evs, GW, PAD, useTimes);
+
+  if (!evs.length) {
+    ctx.fillStyle = col.muted; ctx.font = (fs+4) + "px 'DM Mono','Courier New',monospace";
+    ctx.textAlign = 'center'; ctx.fillText('Start Analyzing to record notes', W/2, H/2); return;
+  }
+
+  var allHz = [], ei;
+  for (ei = 0; ei < evs.length; ei++) { allHz.push(evs[ei].hz); allHz.push(evs[ei].target); }
+  var rawMin = Math.min.apply(null,allHz), rawMax = Math.max.apply(null,allHz);
+  var range = rawMax - rawMin || 20, yPad = range * 0.28;
+  var yMin  = rawMin - yPad, yMax = rawMax + yPad;
+  function yAt(hz) { return PAD.t + GH - ((hz - yMin) / (yMax - yMin)) * GH; }
+
+  /* Y grid */
+  var step = niceStep((yMax - yMin) / 6), yv, yp;
+  for (yv = Math.ceil(yMin/step)*step; yv <= yMax+step*.01; yv += step) {
+    yp = yAt(yv); if (yp < PAD.t-4 || yp > PAD.t+GH+4) continue;
+    ctx.strokeStyle = col.gridLn; ctx.lineWidth = 1; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(PAD.l, yp); ctx.lineTo(PAD.l+GW, yp); ctx.stroke();
+    ctx.fillStyle = col.labA; ctx.font = fs + "px 'DM Mono','Courier New',monospace";
+    ctx.textAlign = 'right'; ctx.fillText(yv.toFixed(1)+' Hz', PAD.l-8, yp + fs*.36);
+  }
+
+  /* X dividers */
+  var xi; for (xi = 0; xi < evs.length; xi++) {
+    ctx.strokeStyle = col.evLn; ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(xAt(xi), PAD.t); ctx.lineTo(xAt(xi), PAD.t+GH); ctx.stroke();
+  }
+
+  /* Reference line — dashed teal/blue */
+  if (evs.length > 1) {
+    var ri;
+    ctx.beginPath(); for (ri=0;ri<evs.length;ri++){var xr=xAt(ri),yr=yAt(evs[ri].target);ri===0?ctx.moveTo(xr,yr):ctx.lineTo(xr,yr);}
+    ctx.strokeStyle = col.gR+'0.14)'; ctx.lineWidth=isModal?18:12; ctx.setLineDash([]); ctx.stroke();
+    ctx.beginPath(); for (ri=0;ri<evs.length;ri++){var xr2=xAt(ri),yr2=yAt(evs[ri].target);ri===0?ctx.moveTo(xr2,yr2):ctx.lineTo(xr2,yr2);}
+    ctx.strokeStyle = col.ref; ctx.lineWidth=isModal?3:2; ctx.setLineDash([isModal?11:7,isModal?7:5]); ctx.stroke(); ctx.setLineDash([]);
+  }
+  var rdi; for (rdi=0;rdi<evs.length;rdi++){
+    var xrd=xAt(rdi),yrd=yAt(evs[rdi].target),rd=isModal?5:4;
+    ctx.beginPath();ctx.arc(xrd,yrd,rd+4,0,Math.PI*2);ctx.fillStyle=col.gR+'0.11)';ctx.fill();
+    ctx.beginPath();ctx.arc(xrd,yrd,rd,0,Math.PI*2);ctx.fillStyle=col.ref;ctx.fill();
+    if (isModal||evs.length<=10){ctx.fillStyle=col.ref;ctx.font=(isModal?11:9)+"px 'DM Mono','Courier New',monospace";ctx.textAlign='center';ctx.globalAlpha=0.75;ctx.fillText(evs[rdi].target.toFixed(1),xrd,yrd+rd+(isModal?17:13));ctx.globalAlpha=1;}
+  }
+
+  /* Played line — solid warm gold */
+  if (evs.length > 1) {
+    var pi;
+    ctx.beginPath(); for(pi=0;pi<evs.length;pi++){var xp=xAt(pi),ypp=yAt(evs[pi].hz);pi===0?ctx.moveTo(xp,ypp):ctx.lineTo(xp,ypp);}
+    ctx.strokeStyle=col.gP+'0.15)';ctx.lineWidth=isModal?28:18;ctx.setLineDash([]);ctx.stroke();
+    ctx.beginPath(); for(pi=0;pi<evs.length;pi++){var xp2=xAt(pi),ypp2=yAt(evs[pi].hz);pi===0?ctx.moveTo(xp2,ypp2):ctx.lineTo(xp2,ypp2);}
+    ctx.strokeStyle=col.gP+'0.30)';ctx.lineWidth=isModal?12:8;ctx.stroke();
+    ctx.beginPath(); for(pi=0;pi<evs.length;pi++){var xp3=xAt(pi),ypp3=yAt(evs[pi].hz);pi===0?ctx.moveTo(xp3,ypp3):ctx.lineTo(xp3,ypp3);}
+    ctx.strokeStyle=col.played;ctx.lineWidth=isModal?3.5:2.5;ctx.stroke();
+  }
+  var pdi; for(pdi=0;pdi<evs.length;pdi++){
+    var xpd=xAt(pdi),ypd=yAt(evs[pdi].hz),rp=isModal?9:7;
+    ctx.beginPath();ctx.arc(xpd,ypd,rp+5,0,Math.PI*2);ctx.fillStyle=col.gP+'0.12)';ctx.fill();
+    ctx.beginPath();ctx.arc(xpd,ypd,rp,0,Math.PI*2);ctx.fillStyle=col.played;ctx.fill();
+    ctx.beginPath();ctx.arc(xpd-rp*.3,ypd-rp*.3,rp*.3,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.6)';ctx.fill();
+    ctx.fillStyle=col.played;ctx.font=(isModal?13:10)+"px 'DM Mono','Courier New',monospace";ctx.textAlign='center';
+    ctx.fillText(evs[pdi].hz.toFixed(1),xpd,ypd-rp-(isModal?10:7));
+  }
+  var ni; for(ni=0;ni<evs.length;ni++){
+    ctx.fillStyle=col.labA;ctx.font=(isModal?14:fs)+"px 'DM Mono','Courier New',monospace";ctx.textAlign='center';
+    ctx.fillText(evs[ni].name,xAt(ni),PAD.t+GH+(isModal?30:22));
+  }
+
+  ctx.fillStyle=col.labB;ctx.font=fs+"px 'DM Mono','Courier New',monospace";ctx.textAlign='center';
+  ctx.fillText(useTimes?'time (s)':'note events',PAD.l+GW/2,H-(isModal?12:6));
+  ctx.save();ctx.translate(12,PAD.t+GH/2);ctx.rotate(-Math.PI/2);ctx.fillText('frequency (Hz)',0,0);ctx.restore();
+
+  /* Playhead */
+  if (playheadTime >= 0 && useTimes && evs.length > 0) {
+    var tMin4=evs[0].timeStart, span4=(evs[evs.length-1].timeStart-tMin4)||1;
+    var xph3=PAD.l+((playheadTime-tMin4)/span4)*GW;
+    if(xph3>=PAD.l&&xph3<=PAD.l+GW){
+      ctx.strokeStyle=col.playhead;ctx.lineWidth=2;ctx.setLineDash([]);
+      ctx.beginPath();ctx.moveTo(xph3,PAD.t);ctx.lineTo(xph3,PAD.t+GH);ctx.stroke();
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   GRAPH CLICK — scrub audio playback to clicked time position
+═══════════════════════════════════════════════════════════════ */
+function handleGraphClick(canvas, e) {
+  if (!audioBlob || noteEvents.length < 2) return;
+  var rect = canvas.getBoundingClientRect();
+  var x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+  var PAD = { l:52, r:14 };
+  var GW  = rect.width - PAD.l - PAD.r;
+  var frac = (x - PAD.l) / GW;
+  frac = Math.max(0, Math.min(1, frac));
+  var tMin = noteEvents[0].timeStart;
+  var tMax = noteEvents[noteEvents.length-1].timeStart;
+  var targetTime = tMin + frac * (tMax - tMin);
+  seekAudioTo(targetTime);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   AUDIO RECORDING — MediaRecorder, chunked for performance
+   Chunks stored every 500ms to avoid large single blob at end.
+═══════════════════════════════════════════════════════════════ */
+function startAudioRecording() {
+  if (!mediaStream) { setStatus('Turn on tuner first'); return; }
+  if (!window.MediaRecorder) { setStatus('MediaRecorder not supported in this browser'); return; }
+
+  audioChunks = []; audioBlob = null;
+
+  /* Prefer audio/webm; fall back gracefully */
+  var mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' :
+                 MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : '';
+  var opts = mimeType ? { mimeType: mimeType } : {};
+
+  try { mediaRecorder = new MediaRecorder(mediaStream, opts); }
+  catch(e) { mediaRecorder = new MediaRecorder(mediaStream); }
+
+  /* Collect chunks every 500ms — avoids single huge blob */
+  mediaRecorder.addEventListener('dataavailable', function(ev) {
+    if (ev.data && ev.data.size > 0) audioChunks.push(ev.data);
+  });
+
+  mediaRecorder.addEventListener('stop', function() {
+    var blobType = mediaRecorder.mimeType || 'audio/webm';
+    audioBlob = new Blob(audioChunks, { type: blobType });
+    var url = URL.createObjectURL(audioBlob);
+    audioPlayer.src = url;
+    /* Enable play button */
+    document.getElementById('btnPlay').style.display    = 'inline-block';
+    document.getElementById('btnPlay').disabled          = false;
+    document.getElementById('playbackBar').style.display = '-webkit-flex';
+    document.getElementById('playbackBar').style.display = 'flex';
+    document.getElementById('playbackScrub').max = audioPlayer.duration || 60;
+    setStatus('Recording saved — press Play to review');
+  });
+
+  mediaRecorder.start(500); /* 500ms timeslice */
+  recordingActive = true;
+  document.getElementById('btnRecord').style.display  = 'none';
+  document.getElementById('btnRecStop').style.display = 'inline-block';
+  document.getElementById('btnRecord').classList.add('active-rec');
+  setStatus('Recording audio…');
+}
+
+function stopAudioRecording() {
+  if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+    mediaRecorder.stop();
+  }
+  recordingActive = false;
+  document.getElementById('btnRecord').style.display  = 'inline-block';
+  document.getElementById('btnRecStop').style.display = 'none';
+  document.getElementById('btnRecord').classList.remove('active-rec');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RECORDING TIMER — counts up while analysis is running
+═══════════════════════════════════════════════════════════════ */
+function startRecTimer() {
+  recElapsed = 0;
+  updateRecTimer();
+  recTimerInterval = setInterval(function() {
+    recElapsed++;
+    updateRecTimer();
+    var pct = (recElapsed / recMaxDur) * 100;
+    document.getElementById('recProgressBar').style.width = Math.min(pct, 100) + '%';
+    if (recElapsed >= recMaxDur) {
+      /* Auto-stop at max duration */
+      analyzeStop();
+      stopAudioRecording();
+      setStatus('Max recording time reached — analysis stopped');
+    }
+  }, 1000);
+  document.getElementById('recTimer').classList.remove('idle');
+}
+
+function stopRecTimer() {
+  clearInterval(recTimerInterval);
+  recTimerInterval = null;
+  document.getElementById('recTimer').classList.add('idle');
+}
+
+function updateRecTimer() {
+  var m = Math.floor(recElapsed / 60), s = recElapsed % 60;
+  document.getElementById('recTimer').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   PLAYBACK + GRAPH SYNC
+   Uses requestAnimationFrame to keep graph playhead in sync.
+═══════════════════════════════════════════════════════════════ */
+function playAudio() {
+  if (!audioBlob) return;
+  audioPlayer.play().then(function() {
+    document.getElementById('btnPlay').style.display  = 'none';
+    document.getElementById('btnPause').style.display = 'inline-block';
+    document.getElementById('btnPlayGraph').textContent = '⏸';
+    startPlaybackSync();
+  }).catch(function(e){ setStatus('Playback error: ' + e.message); });
+}
+
+function pauseAudio() {
+  audioPlayer.pause();
+  document.getElementById('btnPause').style.display = 'none';
+  document.getElementById('btnPlay').style.display  = 'inline-block';
+  document.getElementById('btnPlayGraph').textContent = '▶';
+  stopPlaybackSync();
+}
+
+/* Continuously sync the graph playhead during playback */
+function startPlaybackSync() {
+  function tick() {
+    if (audioPlayer.paused || audioPlayer.ended) { stopPlaybackSync(); return; }
+    var t = audioPlayer.currentTime;
+    playheadTime = t;
+
+    /* Find which note event is currently active */
+    var aidx = -1;
+    for (var i = 0; i < noteEvents.length; i++) {
+      if (noteEvents[i].timeStart <= t && t <= noteEvents[i].timeEnd + 0.3) { aidx = i; break; }
+    }
+    activeNoteIdx = aidx;
+
+    /* Update scrubber and time display */
+    var dur  = audioPlayer.duration || 1;
+    document.getElementById('playbackScrub').value = (t / dur) * 100;
+    document.getElementById('playbackTime').textContent = fmtTime(t) + ' / ' + fmtTime(dur);
+
+    /* Highlight active note row */
+    var rows = document.querySelectorAll('.note-row');
+    for (var j = 0; j < rows.length; j++) {
+      var rowIdx = noteEvents.length - 1 - parseInt(rows[j].getAttribute('data-idx') || '0', 10);
+      rows[j].classList.toggle('playhead-active', parseInt(rows[j].getAttribute('data-idx'),10) === aidx);
+    }
+
+    /* Throttle graph redraw during playback */
+    var now = performance.now();
+    if (now - lastRedrawTime > 60) { lastRedrawTime = now; redrawAll(); }
+
+    playbackRafId = requestAnimationFrame(tick);
+  }
+  playbackRafId = requestAnimationFrame(tick);
+}
+
+function stopPlaybackSync() {
+  if (playbackRafId) { cancelAnimationFrame(playbackRafId); playbackRafId = null; }
+  playheadTime = -1; activeNoteIdx = -1;
+  /* Clear highlights */
+  var rows = document.querySelectorAll('.note-row');
+  for (var j = 0; j < rows.length; j++) rows[j].classList.remove('playhead-active');
+  redrawAll();
+}
+
+function seekAudioTo(timeInAnalysis) {
+  /* timeInAnalysis is relative to analysis start (seconds).
+     Audio recording may have started slightly offset — use 0 offset for now. */
+  if (!audioPlayer.src) return;
+  audioPlayer.currentTime = Math.max(0, timeInAnalysis);
+  playheadTime = timeInAnalysis;
+  redrawAll();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   INTONATION SCORE SYSTEM
+   Weights: Pitch Accuracy 50%, Stability 25%, Attack 15%, Drift 10%
+   All sub-scores are 0–100 mapped to their weighted contribution.
+═══════════════════════════════════════════════════════════════ */
+function computeScore() {
+  var evs = noteEvents;
+  if (!evs.length) return null;
+  var N = evs.length;
+
+  /* ── Pitch Accuracy (50%)
+     Maps average absolute cents deviation to 0–100.
+     0¢ avg → 100, 25¢ avg → 0 (clamped)                         */
+  var sumAbs = 0;
+  for (var i = 0; i < N; i++) sumAbs += Math.abs(evs[i].cents);
+  var avgAbs = sumAbs / N;
+  var pitchScore = Math.max(0, Math.min(100, 100 - (avgAbs / 25) * 100));
+
+  /* ── Stability (25%)
+     Measures std-dev of cents across notes. Lower std-dev = more stable.
+     Perfect = 0 std-dev → 100; 20¢ std-dev → 0                   */
+  var meanCents = evs.reduce(function(s,e){ return s+e.cents; },0) / N;
+  var variance  = evs.reduce(function(s,e){ return s + Math.pow(e.cents-meanCents,2); },0) / N;
+  var stdDev    = Math.sqrt(variance);
+  var stabilityScore = Math.max(0, Math.min(100, 100 - (stdDev / 20) * 100));
+
+  /* ── Attack Accuracy (15%)
+     If only one frame per event we compare the initial cents to avg.
+     Estimate "attack" as first 2 frames vs settled pitch.
+     Since we store only confirmed stable notes, we use the centsDev
+     spread within first-third of each note as a proxy.
+     Simpler proxy: how many notes have |cents| < 15¢ (attack "close enough") */
+  var closeAttacks = 0;
+  for (var ia = 0; ia < N; ia++) { if (Math.abs(evs[ia].cents) < 15) closeAttacks++; }
+  var attackScore = (closeAttacks / N) * 100;
+
+  /* ── Drift Control (10%)
+     Compares cents of consecutive notes with same pitch class.
+     Large swings in same-note consecutive occurrences indicate drift.
+     Proxy: std-dev of absolute cents values for notes in sequence */
+  var driftScore;
+  if (N < 3) {
+    driftScore = pitchScore; /* not enough data, mirror pitch */
+  } else {
+    /* Consecutive absolute-cents differences */
+    var diffs = [];
+    for (var id = 1; id < N; id++) {
+      if (evs[id].noteClass === evs[id-1].noteClass) {
+        diffs.push(Math.abs(evs[id].cents - evs[id-1].cents));
+      }
+    }
+    if (diffs.length === 0) {
+      driftScore = stabilityScore;
+    } else {
+      var avgDiff = diffs.reduce(function(s,v){return s+v;},0) / diffs.length;
+      driftScore = Math.max(0, Math.min(100, 100 - (avgDiff / 25) * 100));
+    }
+  }
+
+  /* ── Weighted overall ── */
+  var overall = pitchScore*0.50 + stabilityScore*0.25 + attackScore*0.15 + driftScore*0.10;
+  overall = Math.round(Math.min(100, Math.max(0, overall)));
+
+  /* ── Rating label ── */
+  var rating;
+  if (overall >= 95)      rating = 'Outstanding';
+  else if (overall >= 88) rating = 'Very Strong';
+  else if (overall >= 78) rating = 'Solid';
+  else if (overall >= 65) rating = 'Developing';
+  else                    rating = 'Needs Focused Intonation Work';
+
+  return {
+    overall:   overall,
+    pitch:     Math.round(pitchScore),
+    stability: Math.round(stabilityScore),
+    attack:    Math.round(attackScore),
+    drift:     Math.round(driftScore),
+    rating:    rating,
+    avgAbs:    avgAbs,
+    meanCents: meanCents,
+    stdDev:    stdDev,
+  };
+}
+
+/* ── Best / worst note ── */
+function findBestWorst() {
+  var evs = noteEvents;
+  if (!evs.length) return null;
+  var best = evs[0], worst = evs[0];
+  for (var i = 1; i < evs.length; i++) {
+    if (Math.abs(evs[i].cents) < Math.abs(best.cents))  best  = evs[i];
+    if (Math.abs(evs[i].cents) > Math.abs(worst.cents)) worst = evs[i];
+  }
+  return { best: best, worst: worst };
+}
+
+/* ── Cents deviation → friendly language ── */
+function centsPhrase(cents) {
+  var abs = Math.abs(cents), dir = cents > 0 ? 'sharp' : 'flat';
+  if (abs < 5)  return 'very well centered';
+  if (abs < 10) return 'slightly ' + dir;
+  if (abs < 20) return 'noticeably ' + dir;
+  return 'significantly ' + dir;
+}
+
+/* ── Register analysis ── */
+function registerInsight() {
+  var evs = noteEvents;
+  var regs = { low:[], mid:[], high:[] };
+  for (var i=0;i<evs.length;i++) regs[evs[i].register].push(Math.abs(evs[i].cents));
+  function avg(arr) { return arr.length ? arr.reduce(function(s,v){return s+v;},0)/arr.length : null; }
+  var la=avg(regs.low), ma=avg(regs.mid), ha=avg(regs.high);
+  var parts = [];
+  if (la !== null && ha !== null) {
+    if (ha < la + 4)      parts.push('Low and upper register intonation were similarly centered.');
+    else if (ha < la + 10) parts.push('Upper register notes were a bit less stable than lower ones.');
+    else                   parts.push('Upper register intonation needs more precision — consider slow practice on those passages.');
+  }
+  if (la !== null && la < 8) parts.push('Lower register notes were especially well centered.');
+  return parts[0] || '';
+}
+
+/* ── Pattern detection ── */
+function patternInsights(score) {
+  var evs = noteEvents, N = evs.length;
+  if (!N) return [];
+  var pr = INST[instKey] || instProfile;
+  var insights = [];
+
+  /* General tendency */
+  if (score.meanCents > 5)
+    insights.push('You tended to play ' + score.meanCents.toFixed(1) + '¢ sharp overall. ' +
+      (instKey==='brass' ? 'Check embouchure tension on long notes.' :
+       instKey==='voice' ? 'Aim to settle pitch just after the attack.' :
+       'Try listening more actively to the reference pitch.'));
+  else if (score.meanCents < -5)
+    insights.push('You tended to play ' + Math.abs(score.meanCents).toFixed(1) + '¢ flat overall. ' +
+      (instKey==='brass' ? 'Support the air column more firmly.' :
+       instKey==='voice' ? 'Lift the soft palate slightly for brighter resonance.' :
+       'More bow weight or finger pressure may help pull pitch up.'));
+
+  /* Stability */
+  if (score.stdDev > 15)
+    insights.push('Pitch stability varied noticeably across notes — consistency will improve with slower, more deliberate practice on intonation.');
+  else if (score.stdDev < 6)
+    insights.push('Pitch stability was strong and consistent across the passage.');
+
+  return insights;
+}
+
+/* ── What to work on ── */
+function recommendation(score) {
+  var lowest = 'pitch';
+  var s = score;
+  if (s.attack <= s.pitch && s.attack <= s.stability && s.attack <= s.drift) lowest = 'attack';
+  else if (s.stability <= s.pitch && s.stability <= s.drift)                  lowest = 'stability';
+  else if (s.drift <= s.pitch)                                                 lowest = 'drift';
+
+  if (lowest === 'attack') return 'Focus next on cleaner note entries — try practicing each note with a deliberate, centered attack.';
+  if (lowest === 'stability') return 'Focus next on consistency — work through the passage slowly, tuning each note before moving on.';
+  if (lowest === 'drift')  return 'Focus next on sustaining notes without drifting — hold long tones and listen carefully through the full duration.';
+  return 'Continue working on centering pitch more quickly on each note.';
+}
+
+/* ── Render score panel ── */
+function renderScore(score, bw) {
+  if (!score) return;
+
+  /* Circle animation: stroke-dasharray = 2πr ≈ 289 */
+  var circumference = 289;
+  var offset = circumference - (score.overall / 100) * circumference;
+  var fill   = document.getElementById('scoreCircleFill');
+  fill.style.strokeDashoffset = offset;
+
+  /* Colour the circle by score */
+  var circleColor = score.overall >= 88 ? '#8ef5a8' : score.overall >= 65 ? '#ffc050' : '#ff7060';
+  fill.style.stroke = circleColor;
+  document.getElementById('scoreNum').innerHTML = score.overall + '<span>/100</span>';
+  document.getElementById('scoreRating').textContent = score.rating;
+  document.getElementById('scoreRating').style.color  = circleColor;
+  document.getElementById('scoreSubtext').textContent = 'Avg deviation: ' + score.avgAbs.toFixed(1) + '¢';
+
+  /* Sub-score bars */
+  function setBar(id, valId, val, color) {
+    setTimeout(function() { document.getElementById(id).style.width = val + '%'; }, 200);
+    document.getElementById(id).style.background = color;
+    document.getElementById(valId).textContent = val;
+  }
+  setBar('barAccuracy',  'valAccuracy',  score.pitch,     '#8ef5a8');
+  setBar('barStability', 'valStability', score.stability, '#70c8e0');
+  setBar('barAttack',    'valAttack',    score.attack,    '#ffc050');
+  setBar('barDrift',     'valDrift',     score.drift,     '#f0b050');
+
+  /* Best / worst */
+  if (bw) {
+    var bestAbs  = Math.abs(bw.best.cents),  worstAbs = Math.abs(bw.worst.cents);
+    var bestColor  = bestAbs < 10 ? '#8ef5a8' : '#ffc050';
+    var worstColor = worstAbs < 20 ? '#ffc050' : '#ff7060';
+    document.getElementById('shBestNote').textContent  = bw.best.name;
+    document.getElementById('shBestNote').style.color  = bestColor;
+    document.getElementById('shBestDesc').textContent  =
+      'Right on — ' + centsPhrase(bw.best.cents) + ' (' + (bw.best.cents>=0?'+':'') + bw.best.cents.toFixed(1) + '¢).';
+    document.getElementById('shWorstNote').textContent = bw.worst.name;
+    document.getElementById('shWorstNote').style.color = worstColor;
+    document.getElementById('shWorstDesc').textContent =
+      'Here you ran ' + centsPhrase(bw.worst.cents) + ' (' + (bw.worst.cents>=0?'+':'') + bw.worst.cents.toFixed(1) + '¢).';
+  }
+
+  /* Insights */
+  var patterns  = patternInsights(score);
+  var regInsight = registerInsight();
+  document.getElementById('insightText1').textContent = patterns[0] || '';
+  document.getElementById('insightText2').textContent = patterns[1] || '';
+  document.getElementById('insightText3').textContent = regInsight;
+
+  /* Recommendation */
+  document.getElementById('recText').textContent = recommendation(score);
+
+  /* Show panel */
+  document.getElementById('scorePanel').className  = 'panel score-panel show';
+}
+
+/* ── Save session to localStorage ── */
+function saveSession(score) {
+  try {
+    var history = JSON.parse(localStorage.getItem('intone_sessions') || '[]');
+    history.unshift({
+      date:  new Date().toLocaleDateString(),
+      score: score.overall,
+      avg:   score.avgAbs.toFixed(1),
+    });
+    if (history.length > 10) history.length = 10;
+    localStorage.setItem('intone_sessions', JSON.stringify(history));
+    renderHistory(history);
+    document.getElementById('historyPanel').className = 'panel history-panel show';
+  } catch(e) { /* localStorage may be unavailable */ }
+}
+
+function renderHistory(history) {
+  var list = document.getElementById('historyList');
+  list.innerHTML = '';
+  for (var i = 0; i < history.length; i++) {
+    var h = history[i];
+    var scoreColor = h.score >= 88 ? '#8ef5a8' : h.score >= 65 ? '#ffc050' : '#ff7060';
+    var row = document.createElement('div');
+    row.className = 'history-row';
+    row.innerHTML = '<span class="history-date">' + h.date + '</span>' +
+      '<span class="history-score" style="color:' + scoreColor + '">' + h.score + '</span>' +
+      '<span class="history-avg">±' + h.avg + '¢</span>';
+    list.appendChild(row);
+  }
+}
+
+function loadHistory() {
+  try {
+    var history = JSON.parse(localStorage.getItem('intone_sessions') || '[]');
+    if (history.length) { renderHistory(history); document.getElementById('historyPanel').className = 'panel history-panel show'; }
+  } catch(e) {}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   SHOW OLD-STYLE QUICK SUMMARY
+═══════════════════════════════════════════════════════════════ */
+function showSummary() {
+  var N    = noteEvents.length;
+  var inT  = 0; for (var i=0;i<N;i++) if(Math.abs(noteEvents[i].cents)<10) inT++;
+  var pct  = Math.round((inT/N)*100);
+  var avg  = noteEvents.reduce(function(s,e){return s+e.cents;},0)/N;
+  var sh=0,fl=0;
+  for(i=0;i<N;i++){if(noteEvents[i].cents>5)sh++;else if(noteEvents[i].cents<-5)fl++;}
+  var bias='Centered';if(sh>fl*1.6)bias='Sharp ↑';else if(fl>sh*1.6)bias='Flat ↓';
+  document.getElementById('sumTotal').textContent=N;
+  document.getElementById('sumPct').textContent=pct+'%';
+  var ae=document.getElementById('sumAvg');ae.textContent=(avg>=0?'+':'')+avg.toFixed(1)+'¢';ae.style.color=avg>2?'var(--accent2)':avg<-2?'var(--cool)':'var(--green)';
+  var be=document.getElementById('sumBias');be.textContent=bias;be.style.color=bias.indexOf('Sharp')!==-1?'var(--accent2)':bias.indexOf('Flat')!==-1?'var(--cool)':'var(--green)';
+  document.getElementById('summaryPanel').className='panel summary-panel show';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   RESET
+═══════════════════════════════════════════════════════════════ */
+function updateResetBtn() {
+  document.getElementById('btnReset').disabled = noteEvents.length === 0 && !audioBlob;
+}
+
+function doReset() {
+  if (analyzing) analyzeStop();
+  if (recordingActive) stopAudioRecording();
+  pauseAudio();
+
+  noteEvents = []; pendingMidi=null; pendingFrames=0; lastConfirmed=-99;
+  audioChunks=[]; audioBlob=null; recElapsed=0;
+  audioPlayer.src=''; playheadTime=-1; activeNoteIdx=-1;
+
+  document.getElementById('notesList').innerHTML='<div class="notes-empty">Note history will appear here once you start analyzing.</div>';
+  document.getElementById('summaryPanel').className='panel summary-panel';
+  document.getElementById('scorePanel').className='panel score-panel';
+  document.getElementById('graphNudge').style.display='block';
+  document.getElementById('btnExport').style.display='none';
+  document.getElementById('btnPlay').style.display='none';
+  document.getElementById('btnPause').style.display='none';
+  document.getElementById('playbackBar').style.display='none';
+  document.getElementById('recProgressBar').style.width='0%';
+  document.getElementById('recTimer').textContent='0:00';
+  document.getElementById('recTimer').classList.add('idle');
+  updateResetBtn();
+  redrawAll();
+  setStatus(tunerOn ? 'Session reset — tuner still live' : 'Session reset');
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   MIC PERMISSION BANNER
+═══════════════════════════════════════════════════════════════ */
+function showMicBanner() {
+  var steps;
+  if(isIOS||isIPadOS)steps=['Go to <strong>Settings → Safari</strong> (or Chrome).','Find <strong>Microphone</strong> → set to <strong>Allow</strong>.','Return here and tap <strong>Tuner On</strong> again.'];
+  else if(isSafari)steps=['<strong>Safari → Settings for This Website</strong>.','Set <strong>Microphone → Allow</strong>.','Reload and tap <strong>Tuner On</strong>.'];
+  else if(isEdge)steps=['Click the <strong>lock icon</strong> in the address bar.','Set <strong>Microphone → Allow</strong>.','Tap <strong>Tuner On</strong> again.'];
+  else steps=['Click the <strong>🔒 lock icon</strong> in the address bar.','Set <strong>Microphone → Allow</strong>.','Click <strong>Tuner On</strong> again.'];
+  document.getElementById('micSteps').innerHTML=steps.map(function(s){return'<li>'+s+'</li>';}).join('');
+  document.getElementById('micBanner').className='mic-banner show';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TUNER ON / OFF
+═══════════════════════════════════════════════════════════════ */
+function tunerStart() {
+  document.getElementById('micBanner').className='mic-banner';
+  if(!AudioCtxClass){setStatus('Web Audio not supported — use Chrome, Edge, or Safari.');return;}
+  if(!doGUM){setStatus('Microphone API unavailable — use Chrome, Edge, or Safari.');return;}
+  try{audioCtx=new AudioCtxClass();}catch(e){setStatus('Audio error: '+e.message);return;}
+  doGUM({audio:true,video:false})
+    .then(function(stream){
+      mediaStream=stream;
+      if(audioCtx.state==='suspended')audioCtx.resume().then(function(){startAudioSystem(stream);});
+      else startAudioSystem(stream);
+    })
+    .catch(function(err){
+      var msg=(err&&(err.name||err.message))||String(err);
+      if(msg.indexOf('NotAllowed')!==-1||msg.indexOf('PermissionDenied')!==-1||msg.indexOf('Security')!==-1){showMicBanner();setStatus('Mic access denied — see instructions above ↑');}
+      else if(msg.indexOf('NotFound')!==-1){setStatus('No microphone found. Plug one in and try again.');}
+      else if(msg.indexOf('NotReadable')!==-1){setStatus('Mic in use by another app. Close it and try again.');}
+      else{setStatus('Mic error: '+msg);}
+    });
+}
+
+function startAudioSystem(stream) {
+  analyser=audioCtx.createAnalyser();
+  analyser.fftSize=4096;analyser.smoothingTimeConstant=instProfile.smooth;
+  try{srcNode=audioCtx.createMediaStreamSource(stream);}catch(e){setStatus('Mic connect error: '+e.message);return;}
+  srcNode.connect(analyser);
+  tunerOn=true;pitchBuf=[];smoothedPitch=0;pendingMidi=null;pendingFrames=0;lastConfirmed=-99;
+
+  document.getElementById('btnTunerOn').style.display  ='none';
+  document.getElementById('btnTunerOff').style.display ='inline-block';
+  document.getElementById('micDot').className          ='mic-dot live';
+  document.getElementById('tunerRail').className       ='tuner-rail live';
+  document.getElementById('tunerStateLabel').textContent='Mic live';
+  document.getElementById('tunerPrompt').className     ='tuner-prompt hidden';
+  document.getElementById('btnAnalyzeStart').disabled  =false;
+  document.getElementById('btnRecord').disabled        =false;
+  setStatus('Tuner live — play any note');
+  audioLoop();
+}
+
+function tunerStop() {
+  tunerOn=false;analyzing=false;
+  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+  if(recordingActive)stopAudioRecording();
+  try{if(srcNode)srcNode.disconnect();}catch(e){}
+  if(mediaStream)mediaStream.getTracks().forEach(function(t){t.stop();});
+  try{if(audioCtx)audioCtx.close();}catch(e){}
+
+  document.getElementById('btnTunerOn').style.display  ='inline-block';
+  document.getElementById('btnTunerOff').style.display ='none';
+  document.getElementById('micDot').className          ='mic-dot';
+  document.getElementById('tunerRail').className       ='tuner-rail';
+  document.getElementById('tunerStateLabel').textContent='Mic off';
+  document.getElementById('tunerPrompt').className     ='tuner-prompt';
+  document.getElementById('btnAnalyzeStart').disabled  =true;
+  document.getElementById('btnAnalyzeStop').style.display='none';
+  document.getElementById('btnAnalyzeStart').style.display='inline-block';
+  document.getElementById('analyzeDot').className      ='analyze-dot';
+  document.getElementById('analyzeLabel').textContent  ='Not recording';
+  document.getElementById('analyzeLabel').className    ='analyze-label';
+  document.getElementById('btnRecord').disabled        =true;
+  resetTunerDisplay();stopRecTimer();
+  setStatus('Tuner off');
+  if(noteEvents.length){showSummary();document.getElementById('btnExport').style.display='inline-block';}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ANALYZE START / STOP
+═══════════════════════════════════════════════════════════════ */
+function analyzeStart() {
+  if(!tunerOn)return;
+  analyzing=true;pendingMidi=null;pendingFrames=0;lastConfirmed=-99;
+  recStartTime=performance.now();  /* stamp analysis start for time-based x-axis */
+  startRecTimer();
+
+  document.getElementById('btnAnalyzeStart').style.display='none';
+  document.getElementById('btnAnalyzeStop').style.display='inline-block';
+  document.getElementById('analyzeDot').className='analyze-dot recording';
+  document.getElementById('analyzeLabel').textContent='Recording';
+  document.getElementById('analyzeLabel').className='analyze-label recording';
+  document.getElementById('graphNudge').style.display='none';
+  setStatus('Recording — play your passage');
+}
+
+function analyzeStop() {
+  analyzing=false;pendingMidi=null;pendingFrames=0;
+  stopRecTimer();
+
+  document.getElementById('btnAnalyzeStop').style.display='none';
+  document.getElementById('btnAnalyzeStart').style.display='inline-block';
+  document.getElementById('analyzeDot').className='analyze-dot';
+  document.getElementById('analyzeLabel').textContent='Not recording';
+  document.getElementById('analyzeLabel').className='analyze-label';
+  setStatus('Analysis paused — tuner still live');
+
+  if(noteEvents.length){
+    showSummary();
+    document.getElementById('btnExport').style.display='inline-block';
+    /* Compute and render the premium score */
+    var score = computeScore();
+    var bw    = findBestWorst();
+    if(score){ renderScore(score, bw); saveSession(score); }
+  }
+}
+
+function setStatus(msg){document.getElementById('ctrlStatus').textContent=msg;}
+
+/* ═══════════════════════════════════════════════════════════════
+   THEME TOGGLE
+═══════════════════════════════════════════════════════════════ */
+function toggleTheme(){
+  var root=document.documentElement,wasNight=root.getAttribute('data-theme')==='night';
+  root.setAttribute('data-theme',wasNight?'day':'night');
+  document.getElementById('toggleLabel').textContent=wasNight?'Day':'Night';
+  setTimeout(function(){redrawAll();},55);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   EVENT LISTENERS
+═══════════════════════════════════════════════════════════════ */
+document.getElementById('btnTunerOn').addEventListener('click',tunerStart);
+document.getElementById('btnTunerOff').addEventListener('click',tunerStop);
+document.getElementById('btnAnalyzeStart').addEventListener('click',analyzeStart);
+document.getElementById('btnAnalyzeStop').addEventListener('click',analyzeStop);
+document.getElementById('btnReset').addEventListener('click',doReset);
+
+/* Recording */
+document.getElementById('btnRecord').addEventListener('click',startAudioRecording);
+document.getElementById('btnRecStop').addEventListener('click',stopAudioRecording);
+document.getElementById('btnPlay').addEventListener('click',playAudio);
+document.getElementById('btnPause').addEventListener('click',pauseAudio);
+
+/* Graph-inline play/pause toggle */
+document.getElementById('btnPlayGraph').addEventListener('click',function(){
+  if(!audioPlayer.paused) pauseAudio(); else playAudio();
+});
+
+/* Playback scrubber */
+document.getElementById('playbackScrub').addEventListener('input',function(){
+  var pct = parseFloat(this.value) / 100;
+  audioPlayer.currentTime = pct * (audioPlayer.duration || 0);
+  playheadTime = audioPlayer.currentTime;
+  redrawAll();
+});
+
+/* Audio player ended */
+audioPlayer.addEventListener('ended', function(){
+  document.getElementById('btnPause').style.display='none';
+  document.getElementById('btnPlay').style.display='inline-block';
+  document.getElementById('btnPlayGraph').textContent='▶';
+  stopPlaybackSync();
+});
+
+/* Graph click to scrub */
+document.getElementById('graphCanvas').addEventListener('click', function(e){
+  handleGraphClick(this, e);
+});
+document.getElementById('modalCanvas').addEventListener('click', function(e){
+  handleGraphClick(this, e);
+});
+
+/* Recording mode toggle (60s / 180s) */
+document.querySelectorAll('.rec-mode-btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    recMaxDur = parseInt(this.getAttribute('data-dur'), 10);
+    document.querySelectorAll('.rec-mode-btn').forEach(function(b){b.classList.remove('active');});
+    this.classList.add('active');
+  });
+});
+
+/* Theme toggle */
+var toggling=false, toggleEl=document.getElementById('themeToggle');
+toggleEl.addEventListener('touchend',function(e){e.preventDefault();toggling=true;toggleTheme();setTimeout(function(){toggling=false;},350);});
+toggleEl.addEventListener('click',function(){if(!toggling)toggleTheme();});
+toggleEl.addEventListener('keydown',function(e){if(e.keyCode===13||e.keyCode===32){e.preventDefault();toggleTheme();}});
+
+/* A4 */
+document.getElementById('a4Slider').addEventListener('input',function(){a4=parseFloat(this.value);document.getElementById('a4Val').textContent=a4.toFixed(1)+' Hz';});
+document.getElementById('a4Slider').addEventListener('change',function(){a4=parseFloat(this.value);document.getElementById('a4Val').textContent=a4.toFixed(1)+' Hz';});
+
+/* Graph tabs */
+var tabBtns=document.querySelectorAll('.tab-btn');
+for(var ti=0;ti<tabBtns.length;ti++){(function(btn){btn.addEventListener('click',function(){
+  graphMode=btn.getAttribute('data-mode');
+  for(var i=0;i<tabBtns.length;i++){tabBtns[i].className=tabBtns[i].className.replace(' active','');tabBtns[i].setAttribute('aria-selected','false');}
+  btn.className+=' active';btn.setAttribute('aria-selected','true');redrawAll();
+});})(tabBtns[ti]);}
+
+/* Fullscreen modal */
+document.getElementById('btnExpand').addEventListener('click',function(){
+  document.getElementById('overlay').className='overlay open';
+  requestAnimationFrame(function(){requestAnimationFrame(function(){drawGraph(document.getElementById('modalCanvas'),true);});});
+});
+document.getElementById('btnModalClose').addEventListener('click',function(){document.getElementById('overlay').className='overlay';});
+document.getElementById('overlay').addEventListener('click',function(e){if(e.target===document.getElementById('overlay'))document.getElementById('overlay').className='overlay';});
+
+/* Instrument mode */
+document.getElementById('instTabs').addEventListener('click',function(e){
+  var btn=e.target;while(btn&&btn.className.indexOf('inst-btn')===-1)btn=btn.parentNode;
+  if(!btn||!btn.getAttribute('data-inst'))return;
+  var bs=document.querySelectorAll('.inst-btn');for(var i=0;i<bs.length;i++)bs[i].className=bs[i].className.replace(' active','');
+  btn.className+=' active';
+  instKey     =btn.getAttribute('data-inst');
+  instProfile =INST[instKey];
+  if(analyser)analyser.smoothingTimeConstant=instProfile.smooth;
+});
+
+/* CSV export */
+document.getElementById('btnExport').addEventListener('click',function(){
+  if(!noteEvents.length)return;
+  var rows=[['Note','Time (s)','Played Hz','Reference Hz','Cents Deviation','In Tune','Register']];
+  for(var i=0;i<noteEvents.length;i++){var e=noteEvents[i];rows.push([e.name,e.timeStart.toFixed(2),e.hz.toFixed(3),e.target.toFixed(3),e.cents.toFixed(2),Math.abs(e.cents)<10?'Yes':'No',e.register]);}
+  var csv=rows.map(function(r){return r.join(',');}).join('\n');
+  try{var blob=new Blob([csv],{type:'text/csv'}),url=URL.createObjectURL(blob);var a=document.createElement('a');a.href=url;a.download='intone-'+Date.now()+'.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(url);},1000);}
+  catch(e){window.open('data:text/csv;charset=utf-8,'+encodeURIComponent(csv));}
+});
+
+/* Keyboard shortcuts */
+document.addEventListener('keydown',function(e){
+  if(e.keyCode===32&&e.target===document.body){e.preventDefault();if(!tunerOn)tunerStart();else if(!analyzing)analyzeStart();else analyzeStop();}
+  if(e.keyCode===27)document.getElementById('overlay').className='overlay';
+  if(e.keyCode===69)document.getElementById('btnExpand').click();
+  if(e.keyCode===84)toggleTheme();
+  if(e.keyCode===82&&!e.metaKey&&!e.ctrlKey)doReset();
+  if(e.keyCode===80){if(!audioPlayer.paused)pauseAudio();else if(audioBlob)playAudio();} /* P = play/pause */
+});
+
+/* Visibility change — resume iOS audio context */
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden&&audioCtx&&audioCtx.state==='suspended'&&tunerOn)audioCtx.resume();
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   METRONOME — Web Audio API lookahead scheduler
+   ───────────────────────────────────────────────────────────────
+   Uses the "precise scheduling" pattern (Chris Wilson, 2013):
+   A short setInterval fires every METRO_LOOKAHEAD_MS and calls
+   scheduleMetro(), which schedules click sounds into the future
+   using audioCtx.currentTime rather than setTimeout().
+   This decouples the timing from the JavaScript event loop and
+   is immune to tab-backgrounding jank.
+
+   Click sounds are built from OscillatorNode + GainNode:
+     • Accent beat (beat 1): higher pitch, slightly longer decay
+     • Normal beat: lower pitch, shorter decay
+   Both use an exponential ramp so the click is crisp and musical.
+═══════════════════════════════════════════════════════════════ */
+
+/* ── Metronome state ── */
+var metroRunning    = false;
+var metroBpm        = 120;
+var metroBeats      = 4;       /* beats per bar (time signature numerator) */
+var metroVolume     = 0.70;    /* 0–1 master volume for clicks             */
+var metroCurBeat    = 0;       /* current beat index (0-based)             */
+var metroNextTime   = 0;       /* audioCtx.currentTime of next scheduled click */
+var metroTimerID    = null;    /* setInterval handle                       */
+var tapTimes        = [];      /* timestamps for tap-tempo calculation      */
+
+/* Lookahead scheduler constants */
+var METRO_LOOKAHEAD_MS    = 25;    /* how often scheduler fires (ms)        */
+var METRO_SCHEDULE_AHEAD  = 0.10;  /* how far ahead to schedule (seconds)   */
+
+/* Separate AudioContext for metronome so it works independently of tuner */
+var metroAudioCtx = null;
+
+function getMetroCtx() {
+  /* Lazily create — must be inside user gesture on iOS */
+  if (!metroAudioCtx || metroAudioCtx.state === 'closed') {
+    metroAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  }
+  if (metroAudioCtx.state === 'suspended') metroAudioCtx.resume();
+  return metroAudioCtx;
+}
+
+/* ── Generate one click at exactly audioCtx.currentTime = when ── */
+function scheduleClick(ctx, when, isAccent) {
+  /* Accent (beat 1): 1000 Hz, 0 → peak → decay over 60ms
+     Normal beat:      800 Hz, 0 → peak → decay over 40ms   */
+  var osc  = ctx.createOscillator();
+  var gain = ctx.createGain();
+
+  osc.connect(gain);
+  gain.connect(ctx.destination);
+
+  osc.type      = 'sine';
+  osc.frequency.value = isAccent ? 1100 : 850;
+
+  /* Shape: instant attack, exponential decay */
+  var peak   = metroVolume * (isAccent ? 0.85 : 0.65);
+  var decayT = isAccent ? 0.060 : 0.040;
+
+  gain.gain.setValueAtTime(0, when);
+  gain.gain.linearRampToValueAtTime(peak, when + 0.004);  /* 4ms attack */
+  gain.gain.exponentialRampToValueAtTime(0.0001, when + decayT);
+
+  osc.start(when);
+  osc.stop(when + decayT + 0.01);
+
+  /* Visual beat flash — schedule a timeout relative to now */
+  var delayMs = (when - ctx.currentTime) * 1000;
+  var beatIdx = metroCurBeat; /* capture for closure */
+  setTimeout(function() { flashBeat(beatIdx, isAccent); }, Math.max(0, delayMs));
+}
+
+/* ── Lookahead scheduler: called every METRO_LOOKAHEAD_MS ── */
+function scheduleMetro() {
+  var ctx = getMetroCtx();
+  var beatDuration = 60.0 / metroBpm; /* seconds per beat */
+
+  while (metroNextTime < ctx.currentTime + METRO_SCHEDULE_AHEAD) {
+    var isAccent = (metroCurBeat === 0);
+    scheduleClick(ctx, metroNextTime, isAccent);
+    metroNextTime += beatDuration;
+    metroCurBeat   = (metroCurBeat + 1) % metroBeats;
+  }
+}
+
+/* ── Flash beat visualizer dot ── */
+function flashBeat(beatIdx, isAccent) {
+  var dots = document.querySelectorAll('.beat-dot');
+  /* Clear all */
+  for (var i = 0; i < dots.length; i++) {
+    dots[i].classList.remove('lit', 'lit-accent');
+  }
+  if (beatIdx < dots.length) {
+    dots[beatIdx].classList.add(isAccent ? 'lit-accent' : 'lit');
+    /* Auto-clear after 120ms */
+    var dot = dots[beatIdx];
+    setTimeout(function() {
+      dot.classList.remove('lit', 'lit-accent');
+    }, 120);
+  }
+}
+
+/* ── Rebuild beat dots when time signature changes ── */
+function buildBeatDots(n) {
+  var row = document.getElementById('metroBeatRow');
+  row.innerHTML = '';
+  for (var i = 0; i < n; i++) {
+    var d = document.createElement('div');
+    d.className = 'beat-dot';
+    row.appendChild(d);
+  }
+}
+
+/* ── Start metronome ── */
+function metroStart() {
+  if (metroRunning) return;
+  var ctx = getMetroCtx();
+
+  /* If count-in enabled and analysis hasn't started, run count-in first */
+  if (document.getElementById('metroCountIn').checked && !analyzing) {
+    runCountIn(ctx);
+    return;
+  }
+
+  metroRunning  = true;
+  metroCurBeat  = 0;
+  metroNextTime = ctx.currentTime + 0.05; /* small startup buffer */
+
+  /* Fire scheduler immediately then every METRO_LOOKAHEAD_MS */
+  scheduleMetro();
+  metroTimerID = setInterval(scheduleMetro, METRO_LOOKAHEAD_MS);
+
+  document.getElementById('btnMetroStart').style.display = 'none';
+  document.getElementById('btnMetroStop').style.display  = 'inline-block';
+}
+
+/* ── Stop metronome ── */
+function metroStop() {
+  if (!metroRunning) return;
+  metroRunning = false;
+  clearInterval(metroTimerID);
+  metroTimerID = null;
+
+  /* Clear beat dots */
+  var dots = document.querySelectorAll('.beat-dot');
+  for (var i = 0; i < dots.length; i++) dots[i].classList.remove('lit', 'lit-accent');
+
+  document.getElementById('btnMetroStop').style.display  = 'none';
+  document.getElementById('btnMetroStart').style.display = 'inline-block';
+}
+
+/* ── Count-in: play one full bar, then auto-start analysis ── */
+function runCountIn(ctx) {
+  /* Count-in not running analysis — just fires clicks for one measure,
+     then kicks off analyzeStart(). The metronome loop starts after. */
+  var beatDuration = 60.0 / metroBpm;
+  var now = ctx.currentTime + 0.05;
+  for (var b = 0; b < metroBeats; b++) {
+    var when = now + b * beatDuration;
+    scheduleClick(ctx, when, b === 0);
+  }
+  /* After count-in measure completes, start analysis + metronome */
+  var countinDur = beatDuration * metroBeats;
+  setTimeout(function() {
+    if (!analyzing && tunerOn) analyzeStart();
+    /* Now start the metronome proper */
+    metroRunning  = true;
+    metroCurBeat  = 0;
+    metroNextTime = getMetroCtx().currentTime + 0.05;
+    scheduleMetro();
+    metroTimerID  = setInterval(scheduleMetro, METRO_LOOKAHEAD_MS);
+    document.getElementById('btnMetroStart').style.display = 'none';
+    document.getElementById('btnMetroStop').style.display  = 'inline-block';
+  }, countinDur * 1000);
+}
+
+/* ── BPM helpers ── */
+function setMetroBpm(bpm) {
+  metroBpm = Math.max(40, Math.min(220, Math.round(bpm)));
+  document.getElementById('metroBpmDisplay').textContent = metroBpm;
+  document.getElementById('metroBpmSlider').value        = metroBpm;
+  /* Note: if metronome is running, new BPM takes effect on next scheduled note */
+}
+
+/* ── Tap Tempo ── */
+var TAP_TIMEOUT = 2500; /* reset tap sequence if gap > 2.5s */
+function handleTap() {
+  var now = performance.now();
+  /* Clear stale taps */
+  tapTimes = tapTimes.filter(function(t) { return now - t < TAP_TIMEOUT; });
+  tapTimes.push(now);
+  if (tapTimes.length >= 2) {
+    /* Average the inter-tap intervals */
+    var intervals = [];
+    for (var i = 1; i < tapTimes.length; i++) intervals.push(tapTimes[i] - tapTimes[i-1]);
+    var avgMs = intervals.reduce(function(s,v){return s+v;},0) / intervals.length;
+    setMetroBpm(60000 / avgMs);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   METRONOME EVENT LISTENERS
+═══════════════════════════════════════════════════════════════ */
+document.getElementById('btnMetroStart').addEventListener('click', metroStart);
+document.getElementById('btnMetroStop').addEventListener('click',  metroStop);
+
+document.getElementById('btnBpmDown').addEventListener('click', function() { setMetroBpm(metroBpm - 1); });
+document.getElementById('btnBpmUp').addEventListener('click',   function() { setMetroBpm(metroBpm + 1); });
+
+/* Long-press BPM nudge: hold button to repeat */
+(function setupLongPress(btnId, delta) {
+  var lp;
+  var el = document.getElementById(btnId);
+  function start() { setMetroBpm(metroBpm + delta); lp = setInterval(function(){ setMetroBpm(metroBpm + delta); }, 150); }
+  function stop()  { clearInterval(lp); }
+  el.addEventListener('mousedown',  start); el.addEventListener('touchstart', start, {passive:true});
+  el.addEventListener('mouseup',    stop);  el.addEventListener('touchend',   stop);
+  el.addEventListener('mouseleave', stop);
+})('btnBpmDown', -1);
+(function setupLongPress2(btnId, delta) {
+  var lp;
+  var el = document.getElementById(btnId);
+  function start() { setMetroBpm(metroBpm + delta); lp = setInterval(function(){ setMetroBpm(metroBpm + delta); }, 150); }
+  function stop()  { clearInterval(lp); }
+  el.addEventListener('mousedown',  start); el.addEventListener('touchstart', start, {passive:true});
+  el.addEventListener('mouseup',    stop);  el.addEventListener('touchend',   stop);
+  el.addEventListener('mouseleave', stop);
+})('btnBpmUp', 1);
+
+document.getElementById('metroBpmSlider').addEventListener('input', function() {
+  setMetroBpm(parseFloat(this.value));
+});
+
+document.getElementById('metroVolSlider').addEventListener('input', function() {
+  metroVolume = parseFloat(this.value);
+});
+
+/* Time signature buttons */
+document.getElementById('metroSigTabs').addEventListener('click', function(e) {
+  var btn = e.target.closest('.metro-sig-btn');
+  if (!btn) return;
+  metroBeats = parseInt(btn.getAttribute('data-beats'), 10);
+  metroCurBeat = 0; /* reset beat counter immediately */
+  /* Update UI */
+  var btns = document.querySelectorAll('.metro-sig-btn');
+  for (var i = 0; i < btns.length; i++) btns[i].classList.remove('active');
+  btn.classList.add('active');
+  buildBeatDots(metroBeats);
+});
+
+/* Tap tempo */
+document.getElementById('btnTap').addEventListener('click', handleTap);
+/* Also accept spacebar when on the tap button */
+document.getElementById('btnTap').addEventListener('keydown', function(e) {
+  if (e.keyCode === 32 || e.keyCode === 13) { e.preventDefault(); handleTap(); }
+});
+
+/* Keyboard: M = toggle metro */
+document.addEventListener('keydown', function(e) {
+  if (e.keyCode === 77 && !e.metaKey && !e.ctrlKey && e.target === document.body) {
+    if (metroRunning) metroStop(); else metroStart();
+  }
+});
+
+/* ── Init metronome beat dots ── */
+buildBeatDots(metroBeats);
+
+(function(){
+  var c=document.getElementById('tunerTicks'),marks=[-50,-40,-30,-20,-10,0,10,20,30,40,50];
+  for(var i=0;i<marks.length;i++){var v=marks[i],t=document.createElement('div');t.className='tuner-tick'+(v===0?' center':'');t.style.left=((v+50)/100*88+6)+'%';c.appendChild(t);}
+})();
+
+/* ── Init ── */
+updateResetBtn();
+loadHistory();
+requestAnimationFrame(function(){redrawAll();});
+var rsT;
+window.addEventListener('resize',function(){clearTimeout(rsT);rsT=setTimeout(function(){redrawAll();},120);});
+</script>
+</body>
+</html>
