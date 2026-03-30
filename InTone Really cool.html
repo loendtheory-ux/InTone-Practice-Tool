@@ -1,0 +1,1978 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="night">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#110904">
+<title>INTONE — Live Intonation Analyzer</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   INTONE v9 — Reinhold Schmidt bass (night) + Daphne/LP Blue (day)
+   Fixed: audio-graph scrub sync | Responsive: phone/tablet/desktop
+   ============================================================ */
+
+/* ── Night palette ── */
+[data-theme="night"] {
+  --bg:       #110904;  --bg2: #1c1006;
+  --surface:  rgba(200,130,50,0.13);  --surf2: rgba(200,130,50,0.24);
+  --border:   rgba(220,160,70,0.38);  --border2: rgba(220,160,70,0.70);
+  --accent:   #c47a28;  --accent2: #f0b050;  --accent-dim: rgba(196,122,40,0.22);
+  --cool:     #70c8e0;  --cool-dim: rgba(112,200,224,0.18);
+  --green:    #6edf88;  --green-glow: rgba(110,223,136,0.55);
+  --red:      #e86858;
+  --line-played: #f0b050;  --line-ref: #70c8e0;
+  --text: #f0e0c0;  --text2: #c8a060;  --muted: #907040;
+}
+/* ── Day palette ── */
+[data-theme="day"] {
+  --bg:       #b4c8d8;  --bg2: #92aec4;
+  --surface:  rgba(10,34,75,0.14);  --surf2: rgba(10,34,75,0.26);
+  --border:   rgba(10,34,75,0.42);  --border2: rgba(10,34,75,0.72);
+  --accent:   #2e5f96;  --accent2: #1a3e70;  --accent-dim: rgba(46,95,150,0.18);
+  --cool:     #1a3870;  --cool-dim: rgba(26,56,112,0.14);
+  --green:    #0a5226;  --green-glow: rgba(10,82,38,0.40);
+  --red:      #8a1808;
+  --line-played: #a04c00;  --line-ref: #1a3870;
+  --text: #040c18;  --text2: #0a1e3c;  --muted: #1a3858;
+}
+
+*,*::before,*::after{-webkit-box-sizing:border-box;box-sizing:border-box;margin:0;padding:0;}
+html{font-size:16px;-webkit-text-size-adjust:100%;-ms-text-size-adjust:100%;}
+body{background:var(--bg);color:var(--text);font-family:'Syne','Segoe UI',Arial,sans-serif;
+  min-height:100vh;overflow-x:hidden;-webkit-font-smoothing:antialiased;
+  -webkit-transition:background .40s,color .40s;transition:background .40s,color .40s;
+  touch-action:manipulation;-ms-touch-action:manipulation;}
+
+.atmo{position:fixed;top:0;left:0;right:0;bottom:0;pointer-events:none;z-index:0;}
+[data-theme="night"] .atmo{background:radial-gradient(ellipse 60% 50% at 12% 10%,rgba(196,122,40,.09) 0%,transparent 65%),radial-gradient(ellipse 45% 60% at 88% 85%,rgba(106,184,208,.05) 0%,transparent 65%);}
+[data-theme="day"] .atmo{background:radial-gradient(ellipse 60% 50% at 10% 8%,rgba(100,160,210,.30) 0%,transparent 65%),radial-gradient(ellipse 50% 45% at 90% 88%,rgba(180,120,40,.08) 0%,transparent 60%);}
+
+.app{position:relative;z-index:1;max-width:1280px;margin:0 auto;padding:0 16px 80px;}
+
+/* ═══ HEADER ═══════════════════════════════════════════════════ */
+.header{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  gap:12px;padding:14px 0;border-bottom:1px solid var(--border);margin-bottom:14px;}
+.logo{display:flex;align-items:baseline;gap:10px;}
+.logo-wordmark{font-size:22px;font-weight:800;letter-spacing:.28em;color:var(--accent2);
+  background:linear-gradient(to right,var(--accent2) 10%,var(--accent) 90%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+[data-theme="day"] .logo-wordmark{background:linear-gradient(to right,#1e3c6e 10%,#4272a0 90%);}
+.logo-sub{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.14em;text-transform:uppercase;}
+.header-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+
+/* Theme toggle */
+.theme-toggle{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;min-height:40px;
+  background:var(--surface);border:2px solid var(--border);border-radius:30px;cursor:pointer;
+  user-select:none;-webkit-tap-highlight-color:transparent;}
+.theme-toggle:hover{background:var(--surf2);border-color:var(--border2);}
+.toggle-track{width:34px;height:18px;border-radius:9px;background:var(--muted);position:relative;flex-shrink:0;}
+[data-theme="day"] .toggle-track{background:var(--accent);}
+.toggle-thumb{position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--bg);transition:left .25s;}
+[data-theme="day"] .toggle-thumb{left:18px;}
+.toggle-icon{font-size:13px;}
+.toggle-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);letter-spacing:.10em;text-transform:uppercase;min-width:32px;}
+
+/* A4 calibration */
+.calibration{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;min-height:40px;
+  background:var(--surface);border:2px solid var(--border);border-radius:30px;}
+.calibration-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.12em;}
+.calibration input[type="range"]{-webkit-appearance:none;appearance:none;width:64px;height:4px;background:var(--surf2);border-radius:2px;outline:none;cursor:pointer;}
+.calibration input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent2);cursor:pointer;}
+.calibration input[type="range"]::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--accent2);cursor:pointer;border:none;}
+.calibration-val{font-family:'DM Mono',monospace;font-size:11px;color:var(--accent2);min-width:52px;font-weight:700;}
+
+/* Mic dot */
+.mic-dot{width:11px;height:11px;border-radius:50%;background:var(--muted);flex-shrink:0;display:inline-block;}
+.mic-dot.live{background:var(--green);animation:micPulse 2s infinite;}
+@keyframes micPulse{0%{box-shadow:0 0 0 0 rgba(110,223,136,.6);}70%{box-shadow:0 0 0 10px rgba(110,223,136,0);}100%{box-shadow:0 0 0 0 rgba(110,223,136,0);}}
+
+/* ═══ BUTTONS base ══════════════════════════════════════════════ */
+.btn{font-family:'DM Mono',monospace;font-size:12px;letter-spacing:.11em;text-transform:uppercase;
+  padding:9px 18px;min-height:40px;border-radius:6px;border:2px solid var(--border);
+  background:var(--surface);color:var(--text2);cursor:pointer;white-space:nowrap;font-weight:700;
+  transition:all .18s;-webkit-tap-highlight-color:transparent;-webkit-appearance:none;appearance:none;}
+.btn:hover,.btn:focus{background:var(--surf2);border-color:var(--border2);color:var(--text);outline:none;}
+.btn:active{opacity:.82;}
+
+.btn-tuner-on{border-color:var(--green);color:var(--green);background:rgba(110,223,136,.10);}
+[data-theme="day"] .btn-tuner-on{color:#0a5226;border-color:#0a5226;background:rgba(10,82,38,.10);}
+.btn-tuner-on:hover{background:rgba(110,223,136,.20);}
+.btn-tuner-off{border-color:var(--muted);color:var(--text);}
+
+.btn-analyze-start{border-color:var(--accent2);color:var(--accent2);background:var(--accent-dim);}
+[data-theme="day"] .btn-analyze-start{border-color:#1a3e70;color:#1a3e70;background:rgba(46,95,150,.15);}
+.btn-analyze-start:disabled{opacity:.30;cursor:not-allowed;}
+.btn-analyze-stop{border-color:var(--red);color:var(--red);background:rgba(232,104,88,.13);}
+
+.btn-reset{border-color:var(--accent2);color:var(--accent2);background:var(--accent-dim);}
+.btn-reset:disabled{opacity:.28;cursor:not-allowed;}
+
+.btn-record{border-color:#ff7060;color:#ff7060;background:rgba(255,112,96,.12);}
+.btn-record:hover{background:rgba(255,112,96,.22);}
+.btn-record.active-rec{animation:recGlow 1s infinite alternate;}
+@keyframes recGlow{from{box-shadow:0 0 0 rgba(255,112,96,0);}to{box-shadow:0 0 14px rgba(255,112,96,.6);}}
+
+.btn-play{border-color:var(--cool);color:var(--cool);background:var(--cool-dim);}
+[data-theme="day"] .btn-play{border-color:#1a3870;color:#1a3870;background:rgba(26,56,112,.12);}
+.btn-play:disabled{opacity:.30;cursor:not-allowed;}
+
+.btn-export{border-color:var(--accent2);color:var(--accent2);}
+
+/* ═══ MIC BANNER ════════════════════════════════════════════════ */
+.mic-banner{display:none;border-radius:8px;padding:14px 18px;margin-bottom:14px;
+  font-family:'DM Mono',monospace;font-size:13px;color:var(--text);line-height:1.7;
+  border:2px solid var(--accent2);}
+[data-theme="night"] .mic-banner{background:rgba(196,122,40,.18);}
+[data-theme="day"]   .mic-banner{background:rgba(46,95,150,.16);}
+.mic-banner.show{display:block;}
+.mic-banner strong{color:var(--accent2);}
+.mic-steps{margin-top:8px;padding-left:18px;}
+.mic-steps li{margin-bottom:4px;}
+
+/* ═══ CONTROL BAR ═══════════════════════════════════════════════ */
+.control-bar{display:flex;align-items:center;flex-wrap:wrap;gap:10px;
+  padding:12px 16px;border-radius:12px;border:2px solid var(--border);margin-bottom:12px;}
+[data-theme="night"] .control-bar{background:rgba(30,14,2,.80);border-color:rgba(220,160,70,.50);}
+[data-theme="day"]   .control-bar{background:rgba(10,34,75,.12);border-color:rgba(10,34,75,.50);}
+
+.tuner-ctrl{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+.tuner-state-label{font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);
+  letter-spacing:.10em;text-transform:uppercase;font-weight:700;}
+.ctrl-divider{width:2px;height:32px;background:var(--border);flex-shrink:0;border-radius:1px;}
+@media(max-width:600px){.ctrl-divider{display:none;}}
+.analyze-ctrl{display:flex;align-items:center;gap:9px;flex-wrap:wrap;}
+.analyze-dot{width:10px;height:10px;border-radius:50%;background:var(--muted);flex-shrink:0;display:inline-block;}
+.analyze-dot.recording{background:var(--red);animation:recPulse 1.2s infinite;}
+@keyframes recPulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.analyze-label{font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);
+  letter-spacing:.10em;text-transform:uppercase;font-weight:700;}
+.analyze-label.recording{color:var(--red);font-weight:800;}
+.ctrl-status{font-family:'DM Mono',monospace;font-size:13px;color:var(--text);
+  letter-spacing:.06em;flex:1;text-align:center;font-weight:700;min-width:160px;}
+
+/* ═══ RECORDING BAR ════════════════════════════════════════════ */
+.rec-bar{display:flex;align-items:center;flex-wrap:wrap;gap:10px;
+  padding:10px 16px;border-radius:10px;border:2px solid var(--border);margin-bottom:12px;}
+[data-theme="night"] .rec-bar{background:rgba(20,8,0,.60);}
+[data-theme="day"]   .rec-bar{background:rgba(10,34,75,.08);}
+.rec-bar-left{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.rec-bar-centre{display:flex;align-items:center;gap:10px;flex:1;min-width:120px;}
+.rec-timer{font-family:'DM Mono',monospace;font-size:16px;font-weight:800;
+  color:var(--text2);letter-spacing:.04em;min-width:42px;}
+.rec-timer.idle{color:var(--muted);}
+.rec-timer.live{color:#ff7060;}
+.rec-progress-wrap{flex:1;height:4px;background:var(--surf2);border-radius:2px;overflow:hidden;min-width:60px;}
+.rec-progress-bar{height:100%;background:#ff7060;border-radius:2px;width:0%;transition:width 1s linear;}
+.rec-bar-right{display:flex;align-items:center;gap:7px;}
+.rec-mode-label{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);letter-spacing:.10em;text-transform:uppercase;font-weight:700;}
+.rec-mode-tabs{display:flex;gap:3px;}
+.rec-mode-btn{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  padding:5px 10px;min-height:32px;border-radius:3px;border:2px solid var(--border);
+  background:transparent;color:var(--muted);cursor:pointer;font-weight:700;
+  -webkit-tap-highlight-color:transparent;-webkit-appearance:none;appearance:none;transition:all .18s;}
+.rec-mode-btn.active{border-color:#ff7060;color:#ff7060;background:rgba(255,112,96,.12);}
+
+/* ═══ METRONOME BAR ════════════════════════════════════════════ */
+.metro-bar{display:flex;align-items:center;flex-wrap:wrap;gap:10px;
+  padding:10px 16px;border-radius:10px;border:2px solid var(--border);margin-bottom:14px;}
+[data-theme="night"] .metro-bar{background:rgba(20,8,0,.60);border-color:rgba(112,200,224,.35);}
+[data-theme="day"]   .metro-bar{background:rgba(26,56,112,.10);border-color:rgba(10,34,75,.38);}
+.metro-group{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.metro-group-label{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:700;}
+.metro-bpm-display{font-family:'DM Mono',monospace;font-size:26px;font-weight:800;
+  letter-spacing:-.02em;color:var(--text);min-width:58px;text-align:center;line-height:1;}
+.metro-bpm-unit{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.10em;}
+.metro-nudge{width:30px;height:30px;border-radius:5px;border:2px solid var(--border);background:var(--surface);
+  color:var(--text2);cursor:pointer;font-size:15px;font-weight:800;display:flex;align-items:center;justify-content:center;
+  -webkit-tap-highlight-color:transparent;-webkit-appearance:none;appearance:none;transition:all .15s;}
+.metro-nudge:hover{background:var(--surf2);border-color:var(--border2);}
+.metro-bpm-slider{-webkit-appearance:none;appearance:none;width:80px;height:4px;background:var(--surf2);border-radius:2px;outline:none;cursor:pointer;}
+.metro-bpm-slider::-webkit-slider-thumb{-webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--cool);cursor:pointer;}
+.metro-bpm-slider::-moz-range-thumb{width:14px;height:14px;border-radius:50%;background:var(--cool);cursor:pointer;border:none;}
+.metro-sig-tabs{display:flex;gap:3px;flex-wrap:wrap;}
+.metro-sig-btn{font-family:'DM Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+  padding:4px 8px;min-height:30px;border-radius:3px;border:2px solid var(--border);
+  background:transparent;color:var(--muted);cursor:pointer;font-weight:700;
+  -webkit-tap-highlight-color:transparent;-webkit-appearance:none;appearance:none;transition:all .18s;}
+.metro-sig-btn.active{border-color:var(--cool);color:var(--cool);background:var(--cool-dim);}
+[data-theme="day"] .metro-sig-btn{color:#1a3858;}
+[data-theme="day"] .metro-sig-btn.active{color:#1a3870;border-color:#1a3870;background:rgba(26,56,112,.14);}
+.btn-metro-start{border-color:var(--cool);color:var(--cool);background:var(--cool-dim);}
+.btn-metro-start:hover{background:rgba(112,200,224,.22);}
+[data-theme="day"] .btn-metro-start{border-color:#1a3870;color:#1a3870;background:rgba(26,56,112,.12);}
+.btn-tap{border-color:var(--cool);color:var(--cool);background:var(--cool-dim);}
+[data-theme="day"] .btn-tap{border-color:#1a3870;color:#1a3870;background:rgba(26,56,112,.12);}
+.metro-vol-slider{-webkit-appearance:none;appearance:none;width:56px;height:4px;background:var(--surf2);border-radius:2px;outline:none;cursor:pointer;}
+.metro-vol-slider::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:var(--muted);cursor:pointer;}
+.metro-vol-slider::-moz-range-thumb{width:12px;height:12px;border-radius:50%;background:var(--muted);cursor:pointer;border:none;}
+.metro-beat-row{display:flex;align-items:center;gap:6px;flex-shrink:0;}
+.beat-dot{width:13px;height:13px;border-radius:50%;background:var(--surf2);border:2px solid var(--border);transition:background .06s,box-shadow .06s,transform .06s;}
+.beat-dot:first-child{width:17px;height:17px;}
+.beat-dot.lit-accent{background:#8ef5a8;border-color:#8ef5a8;box-shadow:0 0 14px rgba(142,245,168,.85);transform:scale(1.2);}
+[data-theme="day"] .beat-dot.lit-accent{background:#0a6e30;border-color:#0a6e30;box-shadow:0 0 10px rgba(10,110,48,.55);}
+.beat-dot.lit{background:#70c8e0;border-color:#70c8e0;box-shadow:0 0 10px rgba(112,200,224,.75);transform:scale(1.1);}
+[data-theme="day"] .beat-dot.lit{background:#1a3870;border-color:#1a3870;box-shadow:0 0 8px rgba(26,56,112,.50);}
+.metro-countin{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);
+  display:flex;align-items:center;gap:5px;white-space:nowrap;}
+.metro-countin input[type="checkbox"]{width:13px;height:13px;cursor:pointer;accent-color:var(--cool);}
+.metro-div{width:2px;height:28px;background:var(--border);flex-shrink:0;}
+@media(max-width:600px){.metro-div{display:none;}}
+
+/* ═══ PANEL ═════════════════════════════════════════════════════ */
+.panel{border:2px solid var(--border);border-radius:12px;padding:18px;position:relative;
+  box-shadow:0 4px 24px rgba(0,0,0,.24);}
+[data-theme="night"] .panel{background:rgba(26,12,2,.80);border-color:rgba(220,160,70,.38);}
+[data-theme="day"]   .panel{background:rgba(178,205,228,.82);border-color:rgba(10,34,75,.38);box-shadow:0 2px 14px rgba(10,34,75,.16);}
+.panel-label{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.22em;color:var(--muted);
+  text-transform:uppercase;margin-bottom:14px;font-weight:700;}
+[data-theme="day"] .panel-label{color:#1a3858;}
+
+/* ═══ MAIN GRID — responsive ════════════════════════════════════
+   Desktop ≥ 1024px : tuner+graph left | notes+score right
+   Tablet  768-1023px: same but narrower
+   Phone    < 768px  : single column, compact heights
+══════════════════════════════════════════════════════════════ */
+.main-grid{display:flex;flex-wrap:wrap;gap:14px;align-items:flex-start;}
+.col-main{flex:1 1 540px;display:flex;flex-direction:column;gap:14px;}
+.col-side{flex:0 0 290px;display:flex;flex-direction:column;gap:14px;}
+
+/* ═══ TUNER ══════════════════════════════════════════════════ */
+.tuner-body{display:flex;flex-direction:column;align-items:center;gap:4px;padding-bottom:10px;}
+.note-name{font-size:100px;font-weight:800;line-height:1;letter-spacing:-0.03em;min-height:104px;
+  display:flex;align-items:center;color:var(--muted);transition:color .22s,text-shadow .22s;}
+.note-name.tuner-idle{color:var(--muted);text-shadow:none;}
+.note-name.in-tune{color:#8ef5a8;text-shadow:0 0 20px rgba(110,230,140,.90),0 0 45px rgba(110,230,140,.60),0 0 90px rgba(110,230,140,.30);}
+[data-theme="day"] .note-name.in-tune{color:#0a6e30;text-shadow:0 0 16px rgba(10,110,48,.55),0 0 36px rgba(10,110,48,.28);}
+.note-name.near-tune{color:#ffc050;text-shadow:0 0 18px rgba(255,176,60,.75),0 0 40px rgba(255,176,60,.35);}
+[data-theme="day"] .note-name.near-tune{color:#8c4800;text-shadow:0 0 14px rgba(140,72,0,.38);}
+.note-name.off-tune{color:#ff7060;text-shadow:0 0 18px rgba(255,100,80,.75),0 0 40px rgba(255,100,80,.35);}
+[data-theme="day"] .note-name.off-tune{color:#8a1808;text-shadow:0 0 14px rgba(138,24,8,.35);}
+
+.freq-row{font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);display:flex;gap:8px;
+  align-items:center;flex-wrap:wrap;justify-content:center;text-align:center;font-weight:600;}
+.freq-played{color:var(--line-played);font-weight:800;}
+.freq-ref{color:var(--line-ref);font-weight:800;}
+[data-theme="day"] .freq-played{color:#a04c00;}[data-theme="day"] .freq-ref{color:#1a3870;}
+
+.cents-value{font-family:'DM Mono',monospace;font-size:28px;font-weight:800;color:var(--text2);
+  transition:color .22s,text-shadow .22s;margin-top:4px;}
+.cents-value.in-tune{color:#8ef5a8;text-shadow:0 0 16px rgba(110,230,140,.75),0 0 36px rgba(110,230,140,.30);}
+.cents-value.near-tune{color:#ffc050;}
+.cents-value.off-tune{color:#ff7060;}
+[data-theme="day"] .cents-value.in-tune{color:#0a6e30;text-shadow:0 0 12px rgba(10,110,48,.35);}
+[data-theme="day"] .cents-value.near-tune{color:#8c4800;}
+[data-theme="day"] .cents-value.off-tune{color:#8a1808;}
+
+/* Tuner bar */
+.tuner-wrap{width:100%;max-width:520px;padding:0 6px;margin-top:12px;}
+.tuner-track-box{position:relative;height:52px;}
+.tuner-rail{position:absolute;top:50%;left:0;right:0;height:4px;transform:translateY(-50%);border-radius:3px;
+  background:linear-gradient(to right,rgba(217,96,80,.6) 0%,rgba(232,160,64,.5) 22%,rgba(122,207,138,.75) 42%,rgba(122,207,138,.75) 58%,rgba(232,160,64,.5) 78%,rgba(217,96,80,.6) 100%);
+  opacity:.35;transition:opacity .5s;}
+.tuner-rail.live{opacity:1;}
+[data-theme="day"] .tuner-rail{background:linear-gradient(to right,rgba(140,26,10,.7) 0%,rgba(184,92,8,.6) 22%,rgba(13,92,42,.8) 42%,rgba(13,92,42,.8) 58%,rgba(184,92,8,.6) 78%,rgba(140,26,10,.7) 100%);}
+.tuner-zone{position:absolute;top:50%;width:16%;transform:translateY(-50%) translateX(-50%);left:50%;height:28px;border-radius:4px;background:rgba(122,207,138,.05);border:1px solid rgba(122,207,138,.18);}
+[data-theme="day"] .tuner-zone{background:rgba(13,92,42,.08);border-color:rgba(13,92,42,.28);}
+.tuner-ticks{position:absolute;top:50%;left:0;right:0;transform:translateY(-50%);}
+.tuner-tick{position:absolute;top:-5px;width:1px;height:11px;background:rgba(210,150,60,.22);transform:translateX(-50%);}
+.tuner-tick.center{height:20px;top:-10px;background:rgba(210,150,60,.52);}
+[data-theme="day"] .tuner-tick{background:rgba(14,44,90,.25);}
+[data-theme="day"] .tuner-tick.center{background:rgba(14,44,90,.58);}
+.tuner-needle{position:absolute;top:50%;width:20px;height:20px;border-radius:50%;background:var(--muted);transform:translate(-50%,-50%);left:50%;transition:left .10s cubic-bezier(.22,.61,.36,1),background .3s,box-shadow .3s;z-index:2;}
+.tuner-needle::after{content:'';position:absolute;top:4px;left:4px;right:4px;bottom:4px;border-radius:50%;background:rgba(255,255,255,.78);}
+.tuner-captions{display:flex;justify-content:space-between;font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);letter-spacing:.09em;margin-top:8px;font-weight:700;}
+[data-theme="day"] .tuner-captions{color:#1a3858;}
+.tuner-prompt{margin-top:16px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);text-align:center;letter-spacing:.06em;line-height:1.8;font-weight:600;}
+[data-theme="day"] .tuner-prompt{color:#1a3858;}
+.tuner-prompt.hidden{display:none;}
+
+/* ═══ GRAPH ══════════════════════════════════════════════════ */
+.graph-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;flex-wrap:wrap;gap:8px;}
+.graph-mode-tabs{display:flex;gap:3px;background:rgba(0,0,0,.15);border-radius:5px;padding:3px;border:1px solid var(--border);}
+[data-theme="day"] .graph-mode-tabs{background:rgba(10,34,75,.10);}
+.tab-btn{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.09em;text-transform:uppercase;
+  padding:6px 12px;min-height:34px;border-radius:3px;border:1px solid transparent;background:transparent;
+  color:var(--muted);cursor:pointer;font-weight:700;-webkit-tap-highlight-color:transparent;-webkit-appearance:none;appearance:none;transition:all .18s;}
+.tab-btn.active{background:var(--accent-dim);color:var(--accent2);border-color:rgba(196,122,40,.28);}
+[data-theme="day"] .tab-btn{color:#1a3858;}
+[data-theme="day"] .tab-btn.active{background:rgba(46,95,150,.18);color:#2a5282;border-color:rgba(42,82,130,.40);}
+.graph-btn-row{display:flex;gap:6px;}
+.icon-btn{width:34px;height:34px;border-radius:6px;border:2px solid var(--border);background:var(--surface);
+  color:var(--text2);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;
+  -webkit-tap-highlight-color:transparent;-webkit-appearance:none;appearance:none;transition:all .18s;}
+.icon-btn:hover{border-color:var(--border2);color:var(--text);}
+
+/* Graph legend */
+.graph-legend{display:flex;align-items:center;gap:18px;margin-bottom:10px;padding:8px 12px;
+  background:var(--surf2);border-radius:7px;border:2px solid var(--border);}
+[data-theme="day"] .graph-legend{background:rgba(46,95,150,.16);border-color:rgba(10,34,75,.38);}
+.leg-item{display:flex;align-items:center;gap:8px;font-family:'DM Mono',monospace;font-size:12px;font-weight:700;}
+.leg-line-played{width:28px;height:3px;border-radius:2px;background:var(--line-played);flex-shrink:0;}
+.leg-line-ref{width:28px;height:0;border-top:2px dashed var(--line-ref);flex-shrink:0;}
+.leg-label-played{color:var(--line-played);}
+.leg-label-ref{color:var(--line-ref);}
+[data-theme="day"] .leg-label-played{color:#a04c00;}[data-theme="day"] .leg-label-ref{color:#1a3870;}
+
+/* Graph canvas wrapper — needed for click-to-scrub cursor */
+.graph-canvas-wrap{position:relative;}
+#graphCanvas{display:block;width:100%;height:220px;border-radius:7px;cursor:crosshair;}
+[data-theme="night"] #graphCanvas{background:rgba(0,0,0,.38);}
+[data-theme="day"]   #graphCanvas{background:rgba(10,34,75,.10);}
+
+/* ── Playback bar (shown after recording) ── */
+.playback-bar{display:none;align-items:center;gap:8px;margin-top:8px;padding:8px 12px;
+  border-radius:8px;border:2px solid var(--border);background:var(--surface);}
+[data-theme="night"] .playback-bar{background:rgba(20,8,0,.55);}
+.playback-scrub{-webkit-appearance:none;appearance:none;flex:1;height:5px;background:var(--surf2);border-radius:3px;outline:none;cursor:pointer;}
+.playback-scrub::-webkit-slider-thumb{-webkit-appearance:none;width:16px;height:16px;border-radius:50%;
+  background:var(--cool);cursor:pointer;box-shadow:0 0 8px rgba(112,200,224,.6);}
+.playback-scrub::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:var(--cool);cursor:pointer;border:none;}
+[data-theme="day"] .playback-scrub::-webkit-slider-thumb{background:#1a3870;box-shadow:none;}
+/* Larger touch target for scrubber on phones/tablets */
+@media (pointer: coarse) {
+  .playback-scrub{height:8px;margin:4px 0;}
+  .playback-scrub::-webkit-slider-thumb{width:26px;height:26px;box-shadow:0 0 12px rgba(112,200,224,.7);}
+  .playback-scrub::-moz-range-thumb{width:26px;height:26px;}
+  .metro-bpm-slider::-webkit-slider-thumb{width:22px;height:22px;}
+  .metro-vol-slider::-webkit-slider-thumb{width:20px;height:20px;}
+  .calibration input[type="range"]::-webkit-slider-thumb{width:20px;height:20px;}
+}
+.playback-time{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);font-weight:700;white-space:nowrap;}
+.playback-label{font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.12em;white-space:nowrap;}
+
+.graph-nudge{font-family:'DM Mono',monospace;font-size:12px;color:var(--text2);text-align:center;padding:8px 0 2px;letter-spacing:.06em;font-weight:700;}
+[data-theme="day"] .graph-nudge{color:#1a3858;}
+
+/* ═══ NOTES PANEL ════════════════════════════════════════════ */
+.notes-panel{display:flex;flex-direction:column;max-height:600px;overflow:hidden;}
+.notes-scroll{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:6px;padding-right:2px;-webkit-overflow-scrolling:touch;}
+.notes-scroll::-webkit-scrollbar{width:3px;}
+.notes-scroll::-webkit-scrollbar-track{background:transparent;}
+.notes-scroll::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
+.note-row{background:var(--surface);border:2px solid var(--border);border-radius:7px;padding:9px 11px;
+  display:flex;align-items:center;gap:8px;animation:rowIn .24s ease;transition:background .18s,border-color .18s;}
+@keyframes rowIn{from{opacity:0;transform:translateX(8px);}to{opacity:1;transform:translateX(0);}}
+.note-row:hover{background:var(--surf2);border-color:var(--border2);}
+.note-row.playhead-active{background:rgba(112,200,224,.16);border-color:rgba(112,200,224,.50);}
+[data-theme="day"] .note-row.playhead-active{background:rgba(26,56,112,.16);border-color:rgba(26,56,112,.48);}
+.row-name{font-size:20px;font-weight:800;line-height:1;min-width:40px;text-align:center;flex-shrink:0;}
+.row-data{font-family:'DM Mono',monospace;flex:1;min-width:0;}
+.row-hz{font-size:12px;color:var(--line-played);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:700;}
+.row-tgt{font-size:10px;color:var(--line-ref);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:600;}
+[data-theme="day"] .row-hz{color:#a04c00;}[data-theme="day"] .row-tgt{color:#1a3870;}
+.row-badge{font-family:'DM Mono',monospace;font-size:10px;padding:3px 7px;border-radius:4px;
+  letter-spacing:.04em;white-space:nowrap;flex-shrink:0;font-weight:800;}
+[data-theme="night"] .badge-green{background:rgba(142,245,168,.16);color:#8ef5a8;border:2px solid rgba(142,245,168,.42);}
+[data-theme="night"] .badge-warm {background:rgba(255,192,80,.14); color:#ffc050;border:2px solid rgba(255,192,80,.40);}
+[data-theme="night"] .badge-cool {background:rgba(112,200,224,.14);color:#70c8e0;border:2px solid rgba(112,200,224,.40);}
+[data-theme="night"] .badge-red  {background:rgba(255,112,96,.14); color:#ff7060;border:2px solid rgba(255,112,96,.40);}
+[data-theme="day"] .badge-green{background:rgba(10,110,48,.22);color:#074a1c;border:2px solid rgba(10,110,48,.55);}
+[data-theme="day"] .badge-warm {background:rgba(160,76,0,.22);  color:#6e3200;border:2px solid rgba(160,76,0,.55);}
+[data-theme="day"] .badge-cool {background:rgba(26,56,112,.22); color:#0e2448;border:2px solid rgba(26,56,112,.55);}
+[data-theme="day"] .badge-red  {background:rgba(138,24,8,.22);  color:#5a0a02;border:2px solid rgba(138,24,8,.55);}
+.notes-empty{text-align:center;padding:36px 10px;font-family:'DM Mono',monospace;font-size:13px;color:var(--text2);letter-spacing:.10em;line-height:2.0;font-weight:600;}
+[data-theme="day"] .notes-empty{color:#1a3858;}
+
+/* ═══ SUMMARY / QUICK STATS ════════════════════════════════════ */
+.summary-panel{display:none;}
+.summary-panel.show{display:block;}
+.summary-cards{display:flex;flex-wrap:wrap;gap:10px;}
+.sum-card{flex:1 1 90px;background:var(--surface);border:2px solid var(--border);border-radius:8px;padding:14px 12px;text-align:center;}
+[data-theme="day"] .sum-card{background:rgba(178,205,228,.55);border-color:rgba(10,34,75,.32);}
+.sum-val{font-size:30px;font-weight:800;letter-spacing:-0.02em;line-height:1;margin-bottom:6px;}
+.sum-lbl{font-family:'DM Mono',monospace;font-size:10px;color:var(--text2);letter-spacing:.16em;text-transform:uppercase;font-weight:700;}
+[data-theme="day"] .sum-lbl{color:#1a3858;}
+
+/* ═══ SCORE PANEL ════════════════════════════════════════════ */
+.score-panel{display:none;}
+.score-panel.show{display:block;}
+.score-hero{display:flex;align-items:center;gap:18px;margin-bottom:16px;}
+.score-circle-wrap{position:relative;width:110px;height:110px;flex-shrink:0;}
+.score-circle-svg{width:110px;height:110px;}
+.score-circle-track{fill:none;stroke:var(--surf2);stroke-width:8;}
+.score-circle-fill{fill:none;stroke:#8ef5a8;stroke-width:8;stroke-linecap:round;transition:stroke-dashoffset .8s ease,stroke .4s;}
+.score-num{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  font-size:28px;font-weight:800;color:var(--text);text-align:center;line-height:1;}
+.score-num span{font-size:12px;color:var(--muted);display:block;}
+.score-meta{flex:1;}
+.score-rating{font-size:18px;font-weight:800;color:#8ef5a8;margin-bottom:4px;transition:color .4s;}
+[data-theme="day"] .score-rating{color:#0a6e30;}
+.score-subtext{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);font-weight:600;}
+[data-theme="day"] .score-subtext{color:#1a3858;}
+.sub-scores{display:flex;flex-direction:column;gap:7px;margin-bottom:14px;}
+.sub-row{display:flex;align-items:center;gap:8px;}
+.sub-lbl{font-family:'DM Mono',monospace;font-size:10px;color:var(--text2);font-weight:700;min-width:110px;letter-spacing:.04em;}
+[data-theme="day"] .sub-lbl{color:#1a3858;}
+.sub-bar-wrap{flex:1;height:5px;background:var(--surf2);border-radius:3px;overflow:hidden;}
+.sub-bar{height:100%;width:0%;border-radius:3px;transition:width .7s ease;}
+.sub-val{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);font-weight:800;min-width:28px;text-align:right;}
+.score-highlights{display:flex;gap:10px;margin-bottom:14px;}
+.score-highlight-card{flex:1;background:var(--surface);border:2px solid var(--border);border-radius:8px;padding:10px 12px;}
+[data-theme="day"] .score-highlight-card{background:rgba(178,205,228,.45);border-color:rgba(10,34,75,.28);}
+.sh-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;font-weight:700;margin-bottom:4px;}
+.sh-note{font-size:24px;font-weight:800;line-height:1;margin-bottom:3px;}
+.sh-desc{font-family:'DM Mono',monospace;font-size:10px;color:var(--text2);font-weight:600;line-height:1.5;}
+.score-insights{margin-bottom:12px;}
+.insight-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;font-weight:700;margin-bottom:6px;}
+.insight-text{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);font-weight:600;line-height:1.6;margin-bottom:4px;}
+[data-theme="day"] .insight-text{color:#1a3858;}
+.score-recommendation{padding:10px 12px;background:var(--surf2);border-radius:7px;border:2px solid var(--border);}
+.rec-label{font-family:'DM Mono',monospace;font-size:9px;color:var(--muted);letter-spacing:.18em;text-transform:uppercase;font-weight:700;margin-bottom:5px;}
+.rec-text{font-family:'DM Mono',monospace;font-size:12px;color:var(--text);font-weight:700;line-height:1.6;}
+[data-theme="day"] .rec-text{color:#040c18;}
+
+/* ═══ HISTORY PANEL ══════════════════════════════════════════ */
+.history-panel{display:none;}
+.history-panel.show{display:block;}
+.history-row{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);}
+.history-row:last-child{border-bottom:none;}
+.history-date{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);font-weight:600;}
+.history-score{font-family:'DM Mono',monospace;font-size:16px;font-weight:800;}
+.history-avg{font-family:'DM Mono',monospace;font-size:11px;color:var(--muted);font-weight:600;}
+
+/* ═══ FOOTER ════════════════════════════════════════════════ */
+.footer{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  gap:12px;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);}
+.instrument-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.inst-lbl{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);letter-spacing:.14em;text-transform:uppercase;font-weight:800;}
+[data-theme="day"] .inst-lbl{color:#1a3858;}
+.inst-tabs{display:flex;gap:4px;flex-wrap:wrap;}
+.inst-btn{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  padding:7px 13px;min-height:36px;border-radius:4px;border:2px solid var(--border);
+  background:var(--surface);color:var(--text2);cursor:pointer;font-weight:700;
+  -webkit-tap-highlight-color:transparent;-webkit-appearance:none;appearance:none;transition:all .18s;}
+.inst-btn.active{border-color:var(--accent2);color:var(--accent2);background:var(--accent-dim);}
+.inst-btn:hover:not(.active){border-color:var(--border2);color:var(--text);}
+[data-theme="day"] .inst-btn{color:#1a3858;border-color:rgba(10,34,75,.38);background:rgba(10,34,75,.07);}
+[data-theme="day"] .inst-btn.active{border-color:#1a3e70;color:#1a3e70;background:rgba(46,95,150,.18);}
+.footer-right{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.mono-warning{font-family:'DM Mono',monospace;font-size:11px;color:var(--text2);display:flex;align-items:center;gap:6px;font-weight:700;}
+.mono-warning::before{content:'⚠';color:var(--accent2);}
+[data-theme="day"] .mono-warning{color:#1a3858;}
+
+/* ═══ FULLSCREEN MODAL ═══════════════════════════════════════ */
+.overlay{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(8,4,0,.94);z-index:500;
+  display:none;align-items:center;justify-content:center;padding:16px;
+  padding-top:calc(16px + env(safe-area-inset-top));padding-bottom:calc(16px + env(safe-area-inset-bottom));}
+[data-theme="day"] .overlay{background:rgba(120,150,190,.90);}
+.overlay.open{display:flex;}
+.modal-box{border:2px solid var(--border2);border-radius:14px;width:100%;max-width:1200px;max-height:100%;
+  padding:20px 20px 16px;position:relative;display:flex;flex-direction:column;overflow:hidden;
+  box-shadow:0 8px 60px rgba(0,0,0,.6);}
+[data-theme="night"] .modal-box{background:#1a0e04;}
+[data-theme="day"]   .modal-box{background:#b8c8da;border-color:rgba(14,44,90,.45);}
+.modal-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;flex-shrink:0;flex-wrap:wrap;gap:10px;}
+.modal-title{font-family:'DM Mono',monospace;font-size:11px;letter-spacing:.20em;color:var(--muted);text-transform:uppercase;font-weight:700;}
+.modal-legend{display:flex;align-items:center;gap:20px;padding:8px 14px;background:var(--surf2);border-radius:7px;border:1px solid var(--border);flex-wrap:wrap;}
+.modal-leg-item{display:flex;align-items:center;gap:10px;}
+.modal-swatch-played{width:36px;height:3px;border-radius:2px;background:var(--line-played);}
+.modal-swatch-ref{width:36px;height:0;border-top:2px dashed var(--line-ref);}
+.modal-leg-label{font-family:'DM Mono',monospace;font-size:12px;font-weight:700;}
+.modal-leg-played{color:var(--line-played);}[data-theme="day"] .modal-leg-played{color:#a04c00;}
+.modal-leg-ref{color:var(--line-ref);}[data-theme="day"] .modal-leg-ref{color:#1a3870;}
+.modal-close{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:5px;
+  border:2px solid var(--border);background:var(--surface);color:var(--text2);cursor:pointer;font-size:14px;
+  display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent;-webkit-appearance:none;appearance:none;transition:all .18s;}
+.modal-close:hover{border-color:var(--red);color:var(--red);}
+#modalCanvas{display:block;width:100%;flex:1;min-height:280px;border-radius:7px;cursor:crosshair;}
+[data-theme="night"] #modalCanvas{background:rgba(0,0,0,.40);}
+[data-theme="day"]   #modalCanvas{background:rgba(10,34,75,.09);}
+
+/* ═══ PHONE layout (<768px) ════════════════════════════════════ */
+@media(max-width:767px){
+  .col-side{flex:1 1 100%;}
+  .notes-panel{max-height:220px;}
+  .summary-panel,.score-panel,.history-panel{flex:1 1 100%;}
+  .note-name{font-size:76px;min-height:80px;}
+  .cents-value{font-size:22px;}
+  .freq-row{font-size:12px;}
+  .tuner-captions{font-size:10px;}
+  .control-bar{gap:8px;}
+  .rec-bar{gap:7px;}
+  .metro-bar{gap:7px;}
+  .metro-bpm-slider{width:60px;}
+  .metro-vol-slider{width:44px;}
+  .ctrl-status{min-width:120px;font-size:12px;}
+  /* Stack controls vertically on phone */
+  .control-bar{flex-direction:column;align-items:flex-start;}
+  .ctrl-status{text-align:left;}
+  .score-hero{gap:12px;}
+  .sub-lbl{min-width:88px;}
+  #graphCanvas{height:180px;}
+  .col-main{flex:1 1 100%;}
+}
+
+/* ═══ TABLET layout (768-1023px) ═══════════════════════════════ */
+@media(min-width:768px) and (max-width:1023px){
+  .col-main{flex:1 1 400px;}
+  .col-side{flex:1 1 250px;}
+  .note-name{font-size:88px;}
+  .metro-bpm-slider{width:70px;}
+}
+
+/* ═══ SAFE AREA ════════════════════════════════════════════════ */
+@supports(padding-bottom:env(safe-area-inset-bottom)){
+  .app{padding-bottom:calc(80px + env(safe-area-inset-bottom));}
+}
+</style>
+</head>
+<body>
+<div class="atmo" aria-hidden="true"></div>
+<div class="app">
+
+<div class="mic-banner" id="micBanner" role="alert">
+  <strong>🎙 Microphone access needed</strong><br>
+  Your browser blocked mic access. To fix it:
+  <ul class="mic-steps" id="micSteps"><li>Loading instructions…</li></ul>
+  <div id="httpsWarning" style="display:none;margin-top:10px;padding:8px 10px;background:rgba(255,112,96,.18);border-radius:5px;border:1px solid rgba(255,112,96,.45);">
+    ⚠ <strong>HTTPS required:</strong> This app must be served over <strong>https://</strong> for microphone access to work on iPhone. Ask whoever is hosting it to enable HTTPS.
+  </div>
+</div>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">
+    <span class="logo-wordmark">INTONE</span>
+    <span class="logo-sub">Live Intonation Analyzer</span>
+  </div>
+  <div class="header-right">
+    <div class="theme-toggle" id="themeToggle" role="button" tabindex="0" aria-label="Toggle day/night" title="Toggle (T)">
+      <span class="toggle-icon" aria-hidden="true">🌙</span>
+      <div class="toggle-track" aria-hidden="true"><div class="toggle-thumb"></div></div>
+      <span class="toggle-icon" aria-hidden="true">☀️</span>
+      <span class="toggle-label" id="toggleLabel">Night</span>
+    </div>
+    <div class="calibration">
+      <span class="calibration-label">A4 =</span>
+      <input type="range" id="a4Slider" min="438" max="442" step="0.5" value="440" aria-label="A4 calibration">
+      <span class="calibration-val" id="a4Val">440.0 Hz</span>
+    </div>
+  </div>
+</header>
+
+<!-- CONTROL BAR -->
+<div class="control-bar">
+  <div class="tuner-ctrl">
+    <div class="mic-dot" id="micDot" aria-hidden="true"></div>
+    <button class="btn btn-tuner-on"  id="btnTunerOn"  aria-label="Turn tuner on">🎙 Tuner On</button>
+    <button class="btn btn-tuner-off" id="btnTunerOff" style="display:none" aria-label="Turn tuner off">🎙 Tuner Off</button>
+    <span class="tuner-state-label" id="tunerStateLabel">Mic off</span>
+  </div>
+  <div style="display:flex;align-items:center;gap:10px;flex:1;justify-content:center;">
+    <div class="ctrl-status" id="ctrlStatus" role="status" aria-live="polite">Tap Tuner On to begin</div>
+    <button class="btn btn-reset" id="btnReset" disabled title="Reset session (R)" aria-label="Reset session">↺ Reset</button>
+  </div>
+  <div class="ctrl-divider"></div>
+  <div class="analyze-ctrl">
+    <div class="analyze-dot" id="analyzeDot" aria-hidden="true"></div>
+    <span class="analyze-label" id="analyzeLabel">Not recording</span>
+    <button class="btn btn-analyze-start" id="btnAnalyzeStart" disabled aria-label="Start analyzing">● Analyze</button>
+    <button class="btn btn-analyze-stop"  id="btnAnalyzeStop"  style="display:none" aria-label="Stop analyzing">■ Stop</button>
+  </div>
+</div>
+
+<!-- RECORDING BAR -->
+<div class="rec-bar">
+  <div class="rec-bar-left">
+    <button class="btn btn-record"  id="btnRecord"  disabled aria-label="Record audio">⏺ Record</button>
+    <button class="btn btn-record"  id="btnRecStop" style="display:none" aria-label="Stop recording">⏹ Stop Rec</button>
+    <button class="btn btn-play"    id="btnPlay"    style="display:none" disabled aria-label="Play">▶ Play</button>
+    <button class="btn btn-play"    id="btnPause"   style="display:none" aria-label="Pause">⏸ Pause</button>
+  </div>
+  <div class="rec-bar-centre">
+    <div class="rec-timer idle" id="recTimer">0:00</div>
+    <div class="rec-progress-wrap"><div class="rec-progress-bar" id="recProgressBar"></div></div>
+  </div>
+  <div class="rec-bar-right">
+    <span class="rec-mode-label">Max:</span>
+    <div class="rec-mode-tabs">
+      <button class="rec-mode-btn active" data-dur="60">1 min</button>
+      <button class="rec-mode-btn"        data-dur="180">3 min</button>
+    </div>
+  </div>
+</div>
+
+<!-- METRONOME BAR -->
+<div class="metro-bar" id="metroBar">
+  <div class="metro-group">
+    <button class="btn btn-metro-start" id="btnMetroStart" aria-label="Start metronome">♩ Metro</button>
+    <button class="btn btn-tuner-off"   id="btnMetroStop"  style="display:none" aria-label="Stop metronome">■ Stop</button>
+    <div class="metro-beat-row" id="metroBeatRow"></div>
+  </div>
+  <div class="metro-div"></div>
+  <div class="metro-group">
+    <span class="metro-group-label">BPM</span>
+    <button class="metro-nudge" id="btnBpmDown" aria-label="Decrease BPM">−</button>
+    <div class="metro-bpm-display" id="metroBpmDisplay">120</div>
+    <button class="metro-nudge" id="btnBpmUp"   aria-label="Increase BPM">+</button>
+    <input type="range" class="metro-bpm-slider" id="metroBpmSlider" min="40" max="220" step="1" value="120" aria-label="BPM slider">
+    <span class="metro-bpm-unit">bpm</span>
+  </div>
+  <div class="metro-div"></div>
+  <div class="metro-group">
+    <span class="metro-group-label">Sig</span>
+    <div class="metro-sig-tabs" id="metroSigTabs">
+      <button class="metro-sig-btn" data-beats="2">2/4</button>
+      <button class="metro-sig-btn" data-beats="3">3/4</button>
+      <button class="metro-sig-btn active" data-beats="4">4/4</button>
+      <button class="metro-sig-btn" data-beats="5">5/4</button>
+      <button class="metro-sig-btn" data-beats="6">6/8</button>
+    </div>
+  </div>
+  <div class="metro-div"></div>
+  <div class="metro-group">
+    <button class="btn btn-tap" id="btnTap" aria-label="Tap tempo">Tap</button>
+    <span class="metro-group-label">Vol</span>
+    <input type="range" class="metro-vol-slider" id="metroVolSlider" min="0" max="1" step="0.05" value="0.7" aria-label="Metronome volume">
+    <label class="metro-countin" title="Count-in before recording">
+      <input type="checkbox" id="metroCountIn"> Count-in
+    </label>
+  </div>
+</div>
+
+<!-- MAIN GRID -->
+<div class="main-grid">
+  <div class="col-main">
+
+    <!-- TUNER PANEL -->
+    <div class="panel">
+      <div class="panel-label">Live Tuner</div>
+      <div class="tuner-body">
+        <div class="note-name tuner-idle" id="noteName" aria-live="polite">—</div>
+        <div class="freq-row">
+          <span class="freq-played" id="freqPlayed">— Hz played</span>
+          <span style="color:var(--muted)">·</span>
+          <span class="freq-ref"    id="freqTarget">— Hz reference</span>
+        </div>
+        <div class="cents-value" id="centsVal">± 0.0 ¢</div>
+        <div class="tuner-wrap">
+          <div class="tuner-track-box">
+            <div class="tuner-rail" id="tunerRail"></div>
+            <div class="tuner-zone"></div>
+            <div class="tuner-ticks" id="tunerTicks"></div>
+            <div class="tuner-needle" id="needle"></div>
+          </div>
+          <div class="tuner-captions" aria-hidden="true">
+            <span>−50¢ flat</span><span>−25¢</span><span>in tune</span><span>+25¢</span><span>+50¢ sharp</span>
+          </div>
+        </div>
+        <div class="tuner-prompt" id="tunerPrompt">
+          Tap <strong>Tuner On</strong> and allow microphone access.<br>
+          The needle responds immediately — no analysis required.
+        </div>
+      </div>
+    </div>
+
+    <!-- GRAPH PANEL -->
+    <div class="panel">
+      <div class="graph-header">
+        <div class="panel-label" style="margin:0">Intonation Graph</div>
+        <div class="graph-mode-tabs" role="tablist">
+          <button class="tab-btn active" data-mode="intonation" role="tab" aria-selected="true">Cents</button>
+          <button class="tab-btn"        data-mode="frequency"  role="tab" aria-selected="false">Frequency</button>
+        </div>
+        <div class="graph-btn-row">
+          <button class="icon-btn" id="btnExpand" title="Fullscreen (E)" aria-label="Expand graph">⛶</button>
+        </div>
+      </div>
+      <div class="graph-legend" aria-hidden="true">
+        <div class="leg-item"><div class="leg-line-played"></div><span class="leg-label-played">Played pitch</span></div>
+        <div class="leg-item"><div class="leg-line-ref"></div><span class="leg-label-ref">Reference (ET)</span></div>
+      </div>
+      <div class="graph-canvas-wrap">
+        <canvas id="graphCanvas" role="img" aria-label="Intonation graph"></canvas>
+      </div>
+      <!-- Playback scrubber — shown after recording -->
+      <div class="playback-bar" id="playbackBar">
+        <span class="playback-label">Scrub:</span>
+        <button class="btn btn-play" id="btnPlayGraph" style="padding:5px 10px;min-height:30px;font-size:11px;">▶</button>
+        <input type="range" class="playback-scrub" id="playbackScrub" min="0" max="100" step="0.01" value="0" aria-label="Playback position">
+        <span class="playback-time" id="playbackTime">0:00 / 0:00</span>
+      </div>
+      <div class="graph-nudge" id="graphNudge">Press <strong>● Analyze</strong> to start recording note events</div>
+    </div>
+
+  </div><!-- /.col-main -->
+
+  <div class="col-side">
+
+    <!-- NOTE LIST -->
+    <div class="panel notes-panel">
+      <div class="panel-label">Note History</div>
+      <div class="notes-scroll" id="notesList" role="list">
+        <div class="notes-empty">Note history appears once you start analyzing.</div>
+      </div>
+    </div>
+
+    <!-- QUICK SUMMARY -->
+    <div class="panel summary-panel" id="summaryPanel" aria-live="polite">
+      <div class="panel-label">Quick Stats</div>
+      <div class="summary-cards">
+        <div class="sum-card"><div class="sum-val" id="sumTotal">0</div><div class="sum-lbl">Notes</div></div>
+        <div class="sum-card"><div class="sum-val" id="sumPct" style="color:var(--green)">0%</div><div class="sum-lbl">In Tune</div></div>
+        <div class="sum-card"><div class="sum-val" id="sumAvg">0¢</div><div class="sum-lbl">Avg Dev</div></div>
+        <div class="sum-card"><div class="sum-val" id="sumBias">—</div><div class="sum-lbl">Tendency</div></div>
+      </div>
+    </div>
+
+    <!-- INTONATION SCORE -->
+    <div class="panel score-panel" id="scorePanel">
+      <div class="panel-label">Intonation Score</div>
+      <div class="score-hero">
+        <div class="score-circle-wrap">
+          <svg class="score-circle-svg" viewBox="0 0 110 110">
+            <circle class="score-circle-track" cx="55" cy="55" r="46"/>
+            <circle class="score-circle-fill" id="scoreCircleFill" cx="55" cy="55" r="46"
+              stroke-dasharray="289" stroke-dashoffset="289" transform="rotate(-90 55 55)"/>
+          </svg>
+          <div class="score-num" id="scoreNum">—<span id="scoreMax"></span></div>
+        </div>
+        <div class="score-meta">
+          <div class="score-rating"  id="scoreRating">—</div>
+          <div class="score-subtext" id="scoreSubtext"></div>
+        </div>
+      </div>
+      <div class="sub-scores">
+        <div class="sub-row"><span class="sub-lbl">Pitch Accuracy</span><div class="sub-bar-wrap"><div class="sub-bar" id="barAccuracy"></div></div><span class="sub-val" id="valAccuracy">—</span></div>
+        <div class="sub-row"><span class="sub-lbl">Stability</span><div class="sub-bar-wrap"><div class="sub-bar" id="barStability"></div></div><span class="sub-val" id="valStability">—</span></div>
+        <div class="sub-row"><span class="sub-lbl">Attack Accuracy</span><div class="sub-bar-wrap"><div class="sub-bar" id="barAttack"></div></div><span class="sub-val" id="valAttack">—</span></div>
+        <div class="sub-row"><span class="sub-lbl">Drift Control</span><div class="sub-bar-wrap"><div class="sub-bar" id="barDrift"></div></div><span class="sub-val" id="valDrift">—</span></div>
+      </div>
+      <div class="score-highlights">
+        <div class="score-highlight-card">
+          <div class="sh-label">Most In Tune</div>
+          <div class="sh-note" id="shBestNote" style="color:#8ef5a8;">—</div>
+          <div class="sh-desc" id="shBestDesc">—</div>
+        </div>
+        <div class="score-highlight-card">
+          <div class="sh-label">Least In Tune</div>
+          <div class="sh-note" id="shWorstNote" style="color:#ff7060;">—</div>
+          <div class="sh-desc" id="shWorstDesc">—</div>
+        </div>
+      </div>
+      <div class="score-insights">
+        <div class="insight-label">Observations</div>
+        <div class="insight-text" id="insightText1"></div>
+        <div class="insight-text" id="insightText2"></div>
+        <div class="insight-text" id="insightText3" style="color:var(--muted);font-size:10px;margin-top:2px;"></div>
+      </div>
+      <div class="score-recommendation">
+        <div class="rec-label">Focus Next On</div>
+        <div class="rec-text" id="recText">—</div>
+      </div>
+    </div>
+
+    <!-- SESSION HISTORY -->
+    <div class="panel history-panel" id="historyPanel">
+      <div class="panel-label">Recent Sessions</div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+
+  </div><!-- /.col-side -->
+</div><!-- /.main-grid -->
+
+<footer class="footer">
+  <div class="instrument-row">
+    <span class="inst-lbl">Mode:</span>
+    <div class="inst-tabs" id="instTabs" role="group" aria-label="Instrument mode">
+      <button class="inst-btn active" data-inst="voice">Voice</button>
+      <button class="inst-btn" data-inst="bass">Bass</button>
+      <button class="inst-btn" data-inst="violin">Violin</button>
+      <button class="inst-btn" data-inst="brass">Brass</button>
+    </div>
+  </div>
+  <div class="footer-right">
+    <span class="mono-warning">Monophonic only — chords reduce accuracy</span>
+    <button class="btn btn-export" id="btnExport" style="display:none">↓ Export CSV</button>
+  </div>
+</footer>
+
+</div><!-- /.app -->
+
+<!-- Fullscreen modal -->
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-label="Expanded graph">
+  <div class="modal-box">
+    <button class="modal-close" id="btnModalClose" aria-label="Close">✕</button>
+    <div class="modal-header">
+      <div class="modal-title">Intonation Graph — Expanded</div>
+      <div class="modal-legend" aria-hidden="true">
+        <div class="modal-leg-item"><div class="modal-swatch-played"></div><span class="modal-leg-label modal-leg-played">Played pitch</span></div>
+        <div class="modal-leg-item"><div class="modal-swatch-ref"></div><span class="modal-leg-label modal-leg-ref">Reference / ET</span></div>
+      </div>
+    </div>
+    <canvas id="modalCanvas" role="img" aria-label="Expanded intonation graph"></canvas>
+  </div>
+</div>
+
+<!-- Hidden audio player -->
+<audio id="audioPlayer" style="display:none" preload="auto"></audio>
+
+<script>
+'use strict';
+/* ============================================================
+   INTONE v9 JavaScript
+   Key fix: audio scrub sync via audioAnalysisOffset
+   ============================================================ */
+
+/* ── Browser detection ── */
+var UA        = navigator.userAgent || '';
+var isIOS     = /iPad|iPhone|iPod/.test(UA) && !window.MSStream;
+var isIPadOS  = navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1;
+var isSafari  = /^((?!chrome|android).)*safari/i.test(UA);
+var isEdge    = /Edg\/|Edge\//.test(UA);
+var AudioCtxClass = window.AudioContext || window.webkitAudioContext || null;
+
+/* iOS WebKit detection: Chrome/Edge on iOS are still WebKit, same limits as Safari */
+var isWebKit = isIOS || isIPadOS || isSafari ||
+               /CriOS|FxiOS|EdgiOS/.test(UA); /* Chrome/Firefox/Edge iOS builds */
+
+/* HTTPS check — getUserMedia requires secure context on iOS & modern browsers */
+var isSecureCtx = (location.protocol === 'https:' || location.hostname === 'localhost' ||
+                   location.hostname === '127.0.0.1');
+
+/* Best supported mimeType for this platform.
+   iOS Safari (14.3+): audio/mp4  is the only MediaRecorder format.
+   Chrome/Firefox:     audio/webm;codecs=opus preferred.
+   Fallback:           empty string lets browser decide (usually mp4 on Safari). */
+function bestMimeType() {
+  if (!window.MediaRecorder) return null;
+  var types = [
+    'audio/webm;codecs=opus',
+    'audio/webm',
+    'audio/mp4;codecs=mp4a.40.2',   /* AAC-LC in MP4 — iOS Safari 14.3+ */
+    'audio/mp4',
+    '',  /* let browser pick */
+  ];
+  for (var i = 0; i < types.length; i++) {
+    if (types[i] === '' || MediaRecorder.isTypeSupported(types[i])) return types[i];
+  }
+  return '';
+}
+
+function resolveGUM() {
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia)
+    return function(c) { return navigator.mediaDevices.getUserMedia(c); };
+  var leg = navigator.getUserMedia || navigator.webkitGetUserMedia ||
+            navigator.mozGetUserMedia || navigator.msGetUserMedia;
+  if (leg) return function(c) { return new Promise(function(r,j){ leg.call(navigator,c,r,j); }); };
+  return null;
+}
+var doGUM = resolveGUM();
+
+/* ── Canvas colour helper ── */
+function C() {
+  var n = document.documentElement.getAttribute('data-theme') === 'night';
+  return {
+    night:n,
+    played: n?'#f0b050':'#a04c00',  ref: n?'#70c8e0':'#1a3870',
+    green:  n?'#8ef5a8':'#0a6e30',  amber: n?'#ffc050':'#8c4800',
+    red:    n?'#ff7060':'#8a1808',  muted: n?'#907040':'#1a3858',
+    gridLn: n?'rgba(220,160,70,0.14)':'rgba(10,34,75,0.18)',
+    zeroLn: n?'rgba(240,176,80,0.60)':'rgba(160,76,0,0.60)',
+    band:   n?'rgba(142,245,168,0.08)':'rgba(10,110,48,0.10)',
+    bgFill: n?'rgba(0,0,0,0.38)':'rgba(10,34,75,0.10)',
+    labA:   n?'rgba(240,224,192,0.82)':'rgba(4,12,24,0.88)',
+    labB:   n?'rgba(240,224,192,0.50)':'rgba(4,12,24,0.55)',
+    evLn:   n?'rgba(220,160,70,0.10)':'rgba(10,34,75,0.14)',
+    playhead: n?'rgba(255,255,255,0.80)':'rgba(10,34,75,0.80)',
+    highlight: n?'rgba(240,176,80,0.14)':'rgba(66,114,160,0.16)',
+    gP: n?'rgba(240,176,80,':'rgba(160,76,0,',
+    gR: n?'rgba(112,200,224,':'rgba(26,56,112,',
+  };
+}
+
+/* ── Instrument profiles ── */
+var INST = {
+  voice:  {minHz:75, maxHz:1100,gate:.010,smooth:.84,attackNote:'entries begin',driftNote:'pitch settles',tendencyNote:'pitch'},
+  bass:   {minHz:28, maxHz:380, gate:.013,smooth:.88,attackNote:'attacks are',  driftNote:'notes tend to',tendencyNote:'pitch'},
+  violin: {minHz:180,maxHz:3500,gate:.008,smooth:.79,attackNote:'entries begin',driftNote:'upper register notes',tendencyNote:'intonation'},
+  brass:  {minHz:55, maxHz:1600,gate:.010,smooth:.83,attackNote:'attacks are',  driftNote:'sustained notes', tendencyNote:'pitch'},
+};
+
+/* ── State ── */
+var audioCtx, analyser, srcNode, mediaStream;
+var rafId = null;
+var tunerOn = false, analyzing = false;
+var a4 = 440, graphMode = 'intonation';
+var instKey = 'voice', instProfile = INST.voice;
+var pitchBuf = [], smoothedPitch = 0, PITCH_BUF_LEN = 6;
+var noteEvents = [];
+var pendingMidi = null, pendingHz = 0, pendingFrames = 0, lastConfirmed = -99;
+var STABILITY = 9, NEW_NOTE_SEMITONES = 0.65;
+
+/* Recording timing
+   ─────────────────────────────────────────────────────────────
+   recStartTime     : performance.now() when ● Analyze was pressed
+   recAudioOffset   : seconds between audio record start and analysis start
+                      = how many seconds of audio play BEFORE t=0 on the graph
+   This is the key fix: if Record is pressed before Analyze, audio has
+   content before the first note event. We track this offset so that
+   audioPlayer.currentTime = graphTime + recAudioOffset.
+   ─────────────────────────────────────────────────────────────── */
+var recStartTime   = 0;    /* performance.now() at analysis start          */
+var recAudioStart  = 0;    /* performance.now() at MediaRecorder start      */
+var recAudioOffset = 0;    /* seconds: audio lead before analysis started   */
+var recMaxDur      = 60;
+var recTimerInterval = null;
+var recElapsed     = 0;
+
+/* MediaRecorder */
+var mediaRecorder  = null;
+var audioChunks    = [];
+var audioBlob      = null;
+var recordingActive = false;
+var audioPlayer    = document.getElementById('audioPlayer');
+
+/* Playback sync */
+var playbackRafId  = null;
+var playheadTime   = -1;   /* graph-relative time (seconds from analysis start) */
+var activeNoteIdx  = -1;
+
+/* Throttle */
+var lastRedrawTime = 0, REDRAW_THROTTLE = 33;
+
+/* Music math */
+var NOTE_NAMES = ['C','C#','D','D#','E','F','F#','G','G#','A','A#','B'];
+function freqToMidi(f){return 12*Math.log2(f/a4)+69;}
+function midiToFreq(n){return a4*Math.pow(2,(n-69)/12);}
+function midiToName(n){return NOTE_NAMES[((n%12)+12)%12]+(Math.floor(n/12)-1);}
+function centsDev(p,r){return 1200*Math.log2(p/r);}
+function medianOf(a){var s=a.slice().sort(function(x,y){return x-y;}),m=s.length>>1;return s.length%2?s[m]:(s[m-1]+s[m])/2;}
+function niceStep(r){var p=Math.pow(10,Math.floor(Math.log10(r))),f=r/p;return(f<1.5?1:f<3?2:f<7?5:10)*p;}
+function midiNoteClass(m){return NOTE_NAMES[((m%12)+12)%12];}
+function midiRegister(m){if(m<52)return'low';if(m<=71)return'mid';return'high';}
+function fmtTime(s){var m=Math.floor(s/60),ss=Math.floor(s%60);return m+':'+(ss<10?'0':'')+ss;}
+
+/* ── Pitch detection ── */
+function detectPitch(buf,rate){
+  var N=buf.length,rms=0,i,lag,s;
+  for(i=0;i<N;i++) rms+=buf[i]*buf[i];
+  if(Math.sqrt(rms/N)<instProfile.gate) return null;
+  var minP=Math.floor(rate/instProfile.maxHz), maxP=Math.min(Math.floor(rate/instProfile.minHz),N>>1);
+  var acf=new Float32Array(maxP+1);
+  for(lag=minP;lag<=maxP;lag++){s=0;for(i=0;i<N-lag;i++)s+=buf[i]*buf[i+lag];acf[lag]=s;}
+  var acf0=0;for(i=0;i<N;i++) acf0+=buf[i]*buf[i];
+  var d=minP;while(d<maxP-1&&acf[d]>acf[d+1])d++;
+  var best=d,bv=acf[d];
+  for(lag=d;lag<=maxP;lag++){if(acf[lag]>bv){bv=acf[lag];best=lag;}}
+  if(acf0===0||bv/acf0<0.50) return null;
+  if(best>minP&&best<maxP){var al=acf[best-1],be=acf[best],ga=acf[best+1],d2=al-2*be+ga;if(d2!==0)best+=(al-ga)/(2*d2);}
+  return rate/best;
+}
+
+/* ── Audio loop ── */
+function audioLoop(){
+  if(!tunerOn)return;
+  var buf=new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(buf);
+  var freq=detectPitch(buf,audioCtx.sampleRate);
+  if(freq!==null){
+    pitchBuf.push(freq);if(pitchBuf.length>PITCH_BUF_LEN)pitchBuf.shift();
+    var med=medianOf(pitchBuf);
+    smoothedPitch=smoothedPitch?smoothedPitch*.72+med*.28:med;
+    updateTunerUI(smoothedPitch);
+    if(analyzing)trackNoteEvent(smoothedPitch);
+  }else{
+    pitchBuf=[];smoothedPitch=0;pendingMidi=null;pendingFrames=0;
+    resetTunerDisplay();
+  }
+  rafId=requestAnimationFrame(audioLoop);
+}
+
+/* ── Tuner display ── */
+function updateTunerUI(freq){
+  var midi=Math.round(freqToMidi(freq)),target=midiToFreq(midi),cents=centsDev(freq,target),abs=Math.abs(cents);
+  document.getElementById('noteName').textContent   =midiToName(midi);
+  document.getElementById('freqPlayed').textContent =freq.toFixed(2)+' Hz played';
+  document.getElementById('freqTarget').textContent =target.toFixed(2)+' Hz reference';
+  document.getElementById('centsVal').textContent   =(cents>=0?'+':'')+cents.toFixed(1)+' ¢';
+  var cls=abs<10?'in-tune':abs<25?'near-tune':'off-tune';
+  document.getElementById('noteName').className='note-name '+cls;
+  document.getElementById('centsVal').className='cents-value '+cls;
+  setNeedle(cents);
+}
+function resetTunerDisplay(){
+  document.getElementById('noteName').textContent='—';document.getElementById('noteName').className='note-name tuner-idle';
+  document.getElementById('freqPlayed').textContent='— Hz played';document.getElementById('freqTarget').textContent='— Hz reference';
+  document.getElementById('centsVal').textContent='± 0.0 ¢';document.getElementById('centsVal').className='cents-value';
+  setNeedle(0);
+}
+function setNeedle(cents){
+  var cl=Math.max(-50,Math.min(50,cents)),pct=((cl+50)/100)*88+6;
+  var nd=document.getElementById('needle'),abs=Math.abs(cents);
+  nd.style.left=pct+'%';
+  if(!tunerOn){nd.style.background='#6a4c28';nd.style.boxShadow='none';return;}
+  if(abs<10){nd.style.background='#8ef5a8';nd.style.boxShadow='0 0 22px rgba(110,230,140,.95),0 0 55px rgba(110,230,140,.55)';}
+  else if(abs<25){nd.style.background='#ffc050';nd.style.boxShadow='0 0 22px rgba(255,176,60,.85),0 0 44px rgba(255,176,60,.35)';}
+  else{nd.style.background='#ff7060';nd.style.boxShadow='0 0 22px rgba(255,100,80,.85),0 0 44px rgba(255,100,80,.35)';}
+}
+
+/* ── Note event detection ── */
+function nowSec(){return(performance.now()-recStartTime)/1000;}
+function trackNoteEvent(freq){
+  var fMidi=freqToMidi(freq),iMidi=Math.round(fMidi);
+  if(pendingMidi===null){pendingMidi=iMidi;pendingHz=freq;pendingFrames=1;return;}
+  if(Math.abs(pendingMidi-fMidi)<=NEW_NOTE_SEMITONES){
+    pendingHz=pendingHz*.8+freq*.2;pendingFrames++;
+    if(pendingFrames===STABILITY&&iMidi!==lastConfirmed){confirmNoteEvent(iMidi,pendingHz);lastConfirmed=iMidi;}
+  }else{pendingMidi=iMidi;pendingHz=freq;pendingFrames=1;lastConfirmed=-99;}
+}
+function confirmNoteEvent(midi,hz){
+  var target=midiToFreq(midi),cents=centsDev(hz,target),t=nowSec();
+  var ev={
+    name:midiToName(midi),midi:midi,hz:hz,target:target,cents:cents,
+    timeStart:Math.max(0,t-0.25),timeEnd:t,
+    register:midiRegister(midi),noteClass:midiNoteClass(midi),
+  };
+  noteEvents.push(ev);
+  prependNoteRow(ev,noteEvents.length-1);
+  updateResetBtn();
+  var now=performance.now();
+  if(now-lastRedrawTime>REDRAW_THROTTLE){lastRedrawTime=now;redrawAll();}
+}
+
+/* ── Note row ── */
+function prependNoteRow(ev,idx){
+  var list=document.getElementById('notesList');
+  var ph=list.querySelector('.notes-empty');if(ph)ph.parentNode.removeChild(ph);
+  var abs=Math.abs(ev.cents),sign=ev.cents>=0?'+':'';
+  var cls,txt;
+  if(abs<10){cls='badge-green';txt='In tune';}
+  else if(ev.cents>0){cls=abs<25?'badge-warm':'badge-red';txt=sign+ev.cents.toFixed(1)+'¢';}
+  else{cls=abs<25?'badge-cool':'badge-red';txt=ev.cents.toFixed(1)+'¢';}
+  var col=C();
+  var nameColor,nameStyle='';
+  if(abs<10){nameColor=col.green;nameStyle=' text-shadow:0 0 14px '+col.gP+'0.70),0 0 30px '+col.gP+'0.30);';}
+  else if(abs<25){nameColor=col.amber;}else{nameColor=col.red;}
+  var timeStr=recStartTime>0?' · '+fmtTime(ev.timeStart):'';
+  var row=document.createElement('div');
+  row.className='note-row';row.setAttribute('role','listitem');row.setAttribute('data-idx',idx);
+  row.innerHTML='<div class="row-name" style="color:'+nameColor+';'+nameStyle+'">'+ev.name+'</div>'+
+    '<div class="row-data"><div class="row-hz">'+ev.hz.toFixed(1)+' Hz'+timeStr+'</div>'+
+    '<div class="row-tgt">→ '+ev.target.toFixed(1)+' Hz</div></div>'+
+    '<div class="row-badge '+cls+'">'+txt+'</div>';
+  list.insertBefore(row,list.firstChild);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   GRAPH — time-based x axis
+══════════════════════════════════════════════════════════════ */
+function redrawAll(){
+  drawGraph(document.getElementById('graphCanvas'),false);
+  if(document.getElementById('overlay').className.indexOf('open')!==-1)
+    drawGraph(document.getElementById('modalCanvas'),true);
+}
+
+/* Return the total time span of all note events (seconds) */
+function getTimeSpan(){
+  if(noteEvents.length<2)return null;
+  return{tMin:noteEvents[0].timeStart, tMax:noteEvents[noteEvents.length-1].timeStart};
+}
+
+function makeXHelper(evs,GW,PAD,useTimes){
+  if(useTimes&&evs.length>0){
+    var tMin=evs[0].timeStart,tMax=evs[evs.length-1].timeStart,span=(tMax-tMin)||1;
+    return function(i){return PAD.l+((evs[i].timeStart-tMin)/span)*GW;};
+  }
+  return function(i){return PAD.l+(evs.length>1?(i/(evs.length-1))*GW:GW/2);};
+}
+
+function drawGraph(canvas,isModal){
+  var dpr=window.devicePixelRatio||1,rect=canvas.getBoundingClientRect();
+  if(rect.width<10||rect.height<10)return;
+  canvas.width=Math.round(rect.width*dpr);canvas.height=Math.round(rect.height*dpr);
+  var ctx=canvas.getContext('2d');ctx.setTransform(dpr,0,0,dpr,0,0);
+  var W=rect.width,H=rect.height,col=C();
+  ctx.fillStyle=col.bgFill;ctx.fillRect(0,0,W,H);
+  if(graphMode==='intonation')drawCents(ctx,W,H,isModal,col);
+  else drawFreq(ctx,W,H,isModal,col);
+}
+
+function drawCents(ctx,W,H,isModal,col){
+  var evs=noteEvents,fs=isModal?14:11;
+  var PAD=isModal?{l:64,r:22,t:30,b:54}:{l:48,r:12,t:18,b:42};
+  var GW=W-PAD.l-PAD.r,GH=H-PAD.t-PAD.b;
+  var yMin=-60,yMax=60;
+  var useTimes=evs.length>0&&evs[0].timeStart!==undefined&&recStartTime>0;
+  function yAt(c){return PAD.t+GH-((c-yMin)/(yMax-yMin))*GH;}
+  var xAt=makeXHelper(evs,GW,PAD,useTimes);
+  if(!evs.length){
+    ctx.fillStyle=col.muted;ctx.font=(fs+3)+"px 'DM Mono',monospace";ctx.textAlign='center';
+    ctx.fillText('Start Analyzing to record notes',W/2,H/2);return;
+  }
+  /* Grid */
+  var ticks=[-50,-40,-30,-20,-10,0,10,20,30,40,50],ti,c,y;
+  for(ti=0;ti<ticks.length;ti++){
+    c=ticks[ti];y=yAt(c);ctx.strokeStyle=col.gridLn;ctx.lineWidth=1;ctx.setLineDash([]);
+    ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+GW,y);ctx.stroke();
+    ctx.fillStyle=col.labA;ctx.font=fs+"px 'DM Mono',monospace";ctx.textAlign='right';
+    ctx.fillText((c>0?'+':'')+c,PAD.l-7,y+fs*.36);
+  }
+  /* Zero dashed */
+  var y0=yAt(0);ctx.strokeStyle=col.zeroLn;ctx.lineWidth=1.5;ctx.setLineDash([7,5]);
+  ctx.beginPath();ctx.moveTo(PAD.l,y0);ctx.lineTo(PAD.l+GW,y0);ctx.stroke();ctx.setLineDash([]);
+  /* Band */
+  var y10p=yAt(10),y10m=yAt(-10),bG=ctx.createLinearGradient(0,y10p,0,y10m);
+  bG.addColorStop(0,col.band.replace(/[\d.]+\)$/,'0)'));bG.addColorStop(.5,col.band);bG.addColorStop(1,col.band.replace(/[\d.]+\)$/,'0)'));
+  ctx.fillStyle=bG;ctx.fillRect(PAD.l,y10p,GW,y10m-y10p);
+  /* Playhead highlight */
+  if(playheadTime>=0&&useTimes&&evs.length>0){
+    var ts=getTimeSpan(),xph=PAD.l+((playheadTime-ts.tMin)/((ts.tMax-ts.tMin)||1))*GW;
+    if(xph>=PAD.l&&xph<=PAD.l+GW){ctx.fillStyle=col.highlight;ctx.fillRect(xph-1,PAD.t,3,GH);}
+  }
+  /* Connecting line */
+  var ii;
+  if(evs.length>1){
+    ctx.beginPath();for(ii=0;ii<evs.length;ii++){var xj=xAt(ii),yj=yAt(evs[ii].cents);ii===0?ctx.moveTo(xj,yj):ctx.lineTo(xj,yj);}
+    ctx.strokeStyle=col.played+'70';ctx.lineWidth=1.5;ctx.setLineDash([]);ctx.stroke();
+  }
+  /* Dots */
+  for(ii=0;ii<evs.length;ii++){
+    var e=evs[ii],xk=xAt(ii),yk=yAt(e.cents),absc=Math.abs(e.cents);
+    var ec=absc<10?col.green:absc<25?col.amber:col.red,r=isModal?6:4;
+    if(ii===activeNoteIdx){ctx.fillStyle=col.highlight;ctx.fillRect(xk-14,PAD.t,28,GH);}
+    ctx.beginPath();ctx.arc(xk,yk,r+(isModal?7:5),0,Math.PI*2);ctx.fillStyle=ec+'28';ctx.fill();
+    ctx.beginPath();ctx.arc(xk,yk,r,0,Math.PI*2);ctx.fillStyle=ec;ctx.fill();
+    if(isModal||evs.length<=18){
+      ctx.fillStyle=ec;ctx.font=(isModal?11:9)+"px 'DM Mono',monospace";ctx.textAlign='center';
+      ctx.fillText((e.cents>=0?'+':'')+e.cents.toFixed(1)+'¢',xk,e.cents>=0?yk-r-7:yk+r+(isModal?15:11));
+    }
+    ctx.fillStyle=col.labA;ctx.font=(isModal?13:fs)+"px 'DM Mono',monospace";ctx.textAlign='center';
+    ctx.fillText(e.name,xk,PAD.t+GH+(isModal?27:19));
+  }
+  /* Axis labels */
+  ctx.fillStyle=col.labB;ctx.font=fs+"px 'DM Mono',monospace";ctx.textAlign='center';
+  ctx.fillText(useTimes?'time (s)':'note events',PAD.l+GW/2,H-(isModal?10:4));
+  ctx.save();ctx.translate(10,PAD.t+GH/2);ctx.rotate(-Math.PI/2);ctx.fillText('cents deviation',0,0);ctx.restore();
+  /* Playhead line */
+  if(playheadTime>=0&&useTimes&&evs.length>0){
+    var ts2=getTimeSpan(),xph2=PAD.l+((playheadTime-ts2.tMin)/((ts2.tMax-ts2.tMin)||1))*GW;
+    if(xph2>=PAD.l&&xph2<=PAD.l+GW){
+      ctx.strokeStyle=col.playhead;ctx.lineWidth=2;ctx.setLineDash([]);
+      ctx.beginPath();ctx.moveTo(xph2,PAD.t);ctx.lineTo(xph2,PAD.t+GH);ctx.stroke();
+    }
+  }
+}
+
+function drawFreq(ctx,W,H,isModal,col){
+  var evs=noteEvents,fs=isModal?14:11;
+  var PAD=isModal?{l:82,r:22,t:30,b:54}:{l:68,r:14,t:20,b:42};
+  var GW=W-PAD.l-PAD.r,GH=H-PAD.t-PAD.b;
+  var useTimes=evs.length>0&&evs[0].timeStart!==undefined&&recStartTime>0;
+  var xAt=makeXHelper(evs,GW,PAD,useTimes);
+  if(!evs.length){ctx.fillStyle=col.muted;ctx.font=(fs+3)+"px 'DM Mono',monospace";ctx.textAlign='center';ctx.fillText('Start Analyzing to record notes',W/2,H/2);return;}
+  var allHz=[],ei;for(ei=0;ei<evs.length;ei++){allHz.push(evs[ei].hz);allHz.push(evs[ei].target);}
+  var rMin=Math.min.apply(null,allHz),rMax=Math.max.apply(null,allHz),range=rMax-rMin||20,yPad=range*.28;
+  var yMin=rMin-yPad,yMax=rMax+yPad;
+  function yAt(hz){return PAD.t+GH-((hz-yMin)/(yMax-yMin))*GH;}
+  var step=niceStep((yMax-yMin)/6),yv,yp;
+  for(yv=Math.ceil(yMin/step)*step;yv<=yMax+step*.01;yv+=step){
+    yp=yAt(yv);if(yp<PAD.t-4||yp>PAD.t+GH+4)continue;
+    ctx.strokeStyle=col.gridLn;ctx.lineWidth=1;ctx.setLineDash([]);
+    ctx.beginPath();ctx.moveTo(PAD.l,yp);ctx.lineTo(PAD.l+GW,yp);ctx.stroke();
+    ctx.fillStyle=col.labA;ctx.font=fs+"px 'DM Mono',monospace";ctx.textAlign='right';
+    ctx.fillText(yv.toFixed(1)+' Hz',PAD.l-7,yp+fs*.36);
+  }
+  /* Playhead */
+  if(playheadTime>=0&&useTimes&&evs.length>0){
+    var ts3=getTimeSpan(),xph3=PAD.l+((playheadTime-ts3.tMin)/((ts3.tMax-ts3.tMin)||1))*GW;
+    if(xph3>=PAD.l&&xph3<=PAD.l+GW){ctx.fillStyle=col.highlight;ctx.fillRect(xph3-1,PAD.t,3,GH);}
+  }
+  /* Reference line */
+  if(evs.length>1){
+    var ri;
+    ctx.beginPath();for(ri=0;ri<evs.length;ri++){var xr=xAt(ri),yr=yAt(evs[ri].target);ri===0?ctx.moveTo(xr,yr):ctx.lineTo(xr,yr);}
+    ctx.strokeStyle=col.gR+'0.14)';ctx.lineWidth=isModal?16:10;ctx.setLineDash([]);ctx.stroke();
+    ctx.beginPath();for(ri=0;ri<evs.length;ri++){var xr2=xAt(ri),yr2=yAt(evs[ri].target);ri===0?ctx.moveTo(xr2,yr2):ctx.lineTo(xr2,yr2);}
+    ctx.strokeStyle=col.ref;ctx.lineWidth=isModal?2.5:1.5;ctx.setLineDash([isModal?10:7,isModal?6:4]);ctx.stroke();ctx.setLineDash([]);
+  }
+  var rdi;for(rdi=0;rdi<evs.length;rdi++){
+    var xrd=xAt(rdi),yrd=yAt(evs[rdi].target),rd=isModal?4:3;
+    ctx.beginPath();ctx.arc(xrd,yrd,rd+3,0,Math.PI*2);ctx.fillStyle=col.gR+'0.11)';ctx.fill();
+    ctx.beginPath();ctx.arc(xrd,yrd,rd,0,Math.PI*2);ctx.fillStyle=col.ref;ctx.fill();
+  }
+  /* Played line */
+  if(evs.length>1){
+    var pi;
+    ctx.beginPath();for(pi=0;pi<evs.length;pi++){var xp=xAt(pi),ypp=yAt(evs[pi].hz);pi===0?ctx.moveTo(xp,ypp):ctx.lineTo(xp,ypp);}
+    ctx.strokeStyle=col.gP+'0.14)';ctx.lineWidth=isModal?24:16;ctx.setLineDash([]);ctx.stroke();
+    ctx.beginPath();for(pi=0;pi<evs.length;pi++){var xp2=xAt(pi),ypp2=yAt(evs[pi].hz);pi===0?ctx.moveTo(xp2,ypp2):ctx.lineTo(xp2,ypp2);}
+    ctx.strokeStyle=col.gP+'0.28)';ctx.lineWidth=isModal?10:7;ctx.stroke();
+    ctx.beginPath();for(pi=0;pi<evs.length;pi++){var xp3=xAt(pi),ypp3=yAt(evs[pi].hz);pi===0?ctx.moveTo(xp3,ypp3):ctx.lineTo(xp3,ypp3);}
+    ctx.strokeStyle=col.played;ctx.lineWidth=isModal?3:2;ctx.stroke();
+  }
+  var pdi;for(pdi=0;pdi<evs.length;pdi++){
+    var xpd=xAt(pdi),ypd=yAt(evs[pdi].hz),rp=isModal?8:6;
+    if(pdi===activeNoteIdx){ctx.fillStyle=col.highlight;ctx.fillRect(xpd-14,PAD.t,28,GH);}
+    ctx.beginPath();ctx.arc(xpd,ypd,rp+4,0,Math.PI*2);ctx.fillStyle=col.gP+'0.12)';ctx.fill();
+    ctx.beginPath();ctx.arc(xpd,ypd,rp,0,Math.PI*2);ctx.fillStyle=col.played;ctx.fill();
+    ctx.fillStyle=col.played;ctx.font=(isModal?12:9)+"px 'DM Mono',monospace";ctx.textAlign='center';
+    ctx.fillText(evs[pdi].hz.toFixed(1),xpd,ypd-rp-(isModal?9:6));
+  }
+  var ni;for(ni=0;ni<evs.length;ni++){
+    ctx.fillStyle=col.labA;ctx.font=(isModal?13:fs)+"px 'DM Mono',monospace";ctx.textAlign='center';
+    ctx.fillText(evs[ni].name,xAt(ni),PAD.t+GH+(isModal?27:19));
+  }
+  ctx.fillStyle=col.labB;ctx.font=fs+"px 'DM Mono',monospace";ctx.textAlign='center';
+  ctx.fillText(useTimes?'time (s)':'note events',PAD.l+GW/2,H-(isModal?10:4));
+  ctx.save();ctx.translate(10,PAD.t+GH/2);ctx.rotate(-Math.PI/2);ctx.fillText('frequency (Hz)',0,0);ctx.restore();
+  /* Playhead line */
+  if(playheadTime>=0&&useTimes&&evs.length>0){
+    var ts4=getTimeSpan(),xph4=PAD.l+((playheadTime-ts4.tMin)/((ts4.tMax-ts4.tMin)||1))*GW;
+    if(xph4>=PAD.l&&xph4<=PAD.l+GW){ctx.strokeStyle=col.playhead;ctx.lineWidth=2;ctx.setLineDash([]);ctx.beginPath();ctx.moveTo(xph4,PAD.t);ctx.lineTo(xph4,PAD.t+GH);ctx.stroke();}
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   AUDIO RECORDING
+   Key: stamp recAudioStart so we know the offset between
+   when recording began and when analysis began.
+══════════════════════════════════════════════════════════════ */
+function startAudioRecording(){
+  if(!mediaStream){setStatus('Turn on tuner first');return;}
+
+  /* MediaRecorder: iOS Safari 14.3+ supports it, older iOS does not */
+  if(!window.MediaRecorder){
+    var msg = isWebKit
+      ? 'Audio recording requires iOS 14.3 or later with Safari. The tuner still works!'
+      : 'Audio recording is not supported in this browser.';
+    setStatus(msg);
+    return;
+  }
+
+  audioChunks=[];audioBlob=null;
+
+  /* Pick best supported format for this platform */
+  var mimeType = bestMimeType();
+  var opts = (mimeType !== null && mimeType !== '') ? {mimeType:mimeType} : {};
+
+  try { mediaRecorder = new MediaRecorder(mediaStream, opts); }
+  catch(e) {
+    try { mediaRecorder = new MediaRecorder(mediaStream); }
+    catch(e2) { setStatus('Recording unavailable: ' + e2.message); return; }
+  }
+
+  mediaRecorder.addEventListener('dataavailable', function(ev){
+    if(ev.data && ev.data.size > 0) audioChunks.push(ev.data);
+  });
+
+  mediaRecorder.addEventListener('stop', function(){
+    /* Use the recorder's actual mimeType so Safari plays the blob correctly */
+    var blobType = mediaRecorder.mimeType || (isWebKit ? 'audio/mp4' : 'audio/webm');
+    audioBlob = new Blob(audioChunks, {type: blobType});
+    var blobUrl = URL.createObjectURL(audioBlob);
+    audioPlayer.src = blobUrl;
+
+    /* iOS Safari sometimes needs a brief nudge to expose duration.
+       We load the metadata; if it fails or duration is NaN, we fall back
+       to the elapsed recording time which we already know. */
+    audioPlayer.load();
+
+    var onMeta = function() {
+      /* Set scrubber max as percentage (0–100) — duration may be Infinity on iOS */
+      document.getElementById('playbackScrub').max = 100;
+      document.getElementById('playbackScrub').value = 0;
+      document.getElementById('playbackTime').textContent =
+        fmtTime(0) + ' / ' + (isFinite(audioPlayer.duration) ? fmtTime(audioPlayer.duration) : fmtTime(recElapsed));
+    };
+    audioPlayer.addEventListener('loadedmetadata', onMeta, {once:true});
+    /* Timeout fallback if loadedmetadata never fires (common on iOS with blob URLs) */
+    setTimeout(function() {
+      if(!isFinite(audioPlayer.duration)) onMeta();
+    }, 1200);
+
+    document.getElementById('btnPlay').style.display='inline-block';
+    document.getElementById('btnPlay').disabled=false;
+    showPlaybackBar(true);
+    setStatus('Recording saved — scrub the bar or tap the graph to review');
+  });
+
+  /* iOS needs smaller timeslices for stability; desktop can handle 500ms */
+  var sliceMs = isWebKit ? 250 : 500;
+  mediaRecorder.start(sliceMs);
+
+  recAudioStart = performance.now();
+  recordingActive = true;
+  document.getElementById('btnRecord').style.display='none';
+  document.getElementById('btnRecStop').style.display='inline-block';
+  document.getElementById('btnRecord').classList.add('active-rec');
+  setStatus('Recording audio…');
+}
+
+function stopAudioRecording(){
+  if(mediaRecorder&&mediaRecorder.state!=='inactive')mediaRecorder.stop();
+  recordingActive=false;
+  document.getElementById('btnRecord').style.display='inline-block';
+  document.getElementById('btnRecStop').style.display='none';
+  document.getElementById('btnRecord').classList.remove('active-rec');
+}
+
+/* ── Recording timer ── */
+function startRecTimer(){
+  recElapsed=0;updateRecTimer();
+  document.getElementById('recTimer').classList.remove('idle');
+  document.getElementById('recTimer').classList.add('live');
+  recTimerInterval=setInterval(function(){
+    recElapsed++;updateRecTimer();
+    document.getElementById('recProgressBar').style.width=Math.min((recElapsed/recMaxDur)*100,100)+'%';
+    if(recElapsed>=recMaxDur){analyzeStop();stopAudioRecording();setStatus('Max recording time reached');}
+  },1000);
+}
+function stopRecTimer(){
+  clearInterval(recTimerInterval);recTimerInterval=null;
+  document.getElementById('recTimer').classList.add('idle');
+  document.getElementById('recTimer').classList.remove('live');
+}
+function updateRecTimer(){
+  var m=Math.floor(recElapsed/60),s=recElapsed%60;
+  document.getElementById('recTimer').textContent=m+':'+(s<10?'0':'')+s;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   PLAYBACK + GRAPH SYNC — FIXED SCRUB
+   ──────────────────────────────────────────────────────────────
+   The fundamental fix:
+
+   Two timelines exist:
+     1. Graph / analysis time  : seconds since ● Analyze was pressed
+     2. Audio player time      : audioPlayer.currentTime (seconds from start of recording)
+
+   recAudioOffset = (recStartTime - recAudioStart) / 1000
+     = seconds of audio that played before analysis started.
+     If ⏺ Record is pressed before ● Analyze, this is positive (audio
+     started first). If Analyze starts before Record, it's negative
+     (clamped to 0 in practice).
+
+   Converting between timelines:
+     audioTime  = graphTime  + recAudioOffset
+     graphTime  = audioTime  - recAudioOffset
+
+   This mapping is used in:
+     • startPlaybackSync() → graphTime from audioPlayer.currentTime
+     • seekAudioTo()       → audioTime from graphTime click
+     • handleGraphClick()  → pixel → graphTime → audioTime
+     • scrubber input      → pct → audioTime → graphTime
+══════════════════════════════════════════════════════════════ */
+function graphTimeToAudio(graphT){return Math.max(0, graphT + recAudioOffset);}
+function audioTimeToGraph(audioT){return audioT - recAudioOffset;}
+
+function showPlaybackBar(show){
+  var bar=document.getElementById('playbackBar');
+  bar.style.display=show?'flex':'none';
+}
+
+function playAudio(){
+  if(!audioBlob)return;
+  audioPlayer.play().then(function(){
+    document.getElementById('btnPlay').style.display='none';
+    document.getElementById('btnPause').style.display='inline-block';
+    document.getElementById('btnPlayGraph').textContent='⏸';
+    startPlaybackSync();
+  }).catch(function(e){setStatus('Playback error: '+e.message);});
+}
+function pauseAudio(){
+  audioPlayer.pause();
+  document.getElementById('btnPause').style.display='none';
+  document.getElementById('btnPlay').style.display='inline-block';
+  document.getElementById('btnPlayGraph').textContent='▶';
+  stopPlaybackSync();
+}
+
+function startPlaybackSync(){
+  function tick(){
+    if(audioPlayer.paused||audioPlayer.ended){stopPlaybackSync();return;}
+    /* Convert audio timeline → graph timeline */
+    var audioT=audioPlayer.currentTime;
+    playheadTime=audioTimeToGraph(audioT);
+    /* Active note */
+    activeNoteIdx=-1;
+    for(var i=0;i<noteEvents.length;i++){
+      if(noteEvents[i].timeStart<=playheadTime&&playheadTime<=noteEvents[i].timeEnd+0.35){activeNoteIdx=i;break;}
+    }
+    /* Update scrubber — guard against iOS Infinity duration */
+    var dur = audioPlayer.duration;
+    var durKnown = isFinite(dur) && dur > 0;
+    var durDisplay = durKnown ? dur : recElapsed;  /* fall back to recorded elapsed seconds */
+    document.getElementById('playbackScrub').value = durKnown ? (audioT/dur)*100 : (audioT/durDisplay)*100;
+    document.getElementById('playbackTime').textContent=fmtTime(audioT)+' / '+fmtTime(durDisplay);
+    /* Highlight active row */
+    var rows=document.querySelectorAll('.note-row');
+    for(var j=0;j<rows.length;j++){
+      rows[j].classList.toggle('playhead-active',parseInt(rows[j].getAttribute('data-idx'),10)===activeNoteIdx);
+    }
+    /* Throttled redraw */
+    var now=performance.now();
+    if(now-lastRedrawTime>50){lastRedrawTime=now;redrawAll();}
+    playbackRafId=requestAnimationFrame(tick);
+  }
+  playbackRafId=requestAnimationFrame(tick);
+}
+function stopPlaybackSync(){
+  if(playbackRafId){cancelAnimationFrame(playbackRafId);playbackRafId=null;}
+  playheadTime=-1;activeNoteIdx=-1;
+  document.querySelectorAll('.note-row').forEach(function(r){r.classList.remove('playhead-active');});
+  redrawAll();
+}
+
+/* Seek: graphTime → audioTime → audioPlayer.currentTime */
+function seekAudioTo(graphT){
+  var audioT=graphTimeToAudio(graphT);
+  if(!isFinite(audioT)||!audioPlayer.src)return;
+  audioPlayer.currentTime=audioT;
+  playheadTime=graphT;
+  redrawAll();
+}
+
+/* ── Graph canvas click → seek ── */
+function handleGraphClick(canvas,e){
+  if(!audioBlob||noteEvents.length<2)return;
+  var rect=canvas.getBoundingClientRect();
+  var clientX=e.clientX||(e.touches&&e.touches[0].clientX)||0;
+  var x=clientX-rect.left;
+  /* Use same PAD as graph */
+  var PAD={l:48,r:12};var GW=rect.width-PAD.l-PAD.r;
+  var frac=Math.max(0,Math.min(1,(x-PAD.l)/GW));
+  var ts=getTimeSpan();if(!ts)return;
+  var graphT=ts.tMin+frac*(ts.tMax-ts.tMin);
+  seekAudioTo(graphT);
+  setStatus('Scrubbing to '+fmtTime(graphTimeToAudio(graphT)));
+}
+
+/* ── Playback scrubber input ── */
+document.getElementById('playbackScrub').addEventListener('input',function(){
+  var pct=parseFloat(this.value)/100;
+  /* iOS may report Infinity for duration; fall back to elapsed recording time */
+  var dur = audioPlayer.duration;
+  var durKnown = isFinite(dur) && dur > 0;
+  var audioT = pct * (durKnown ? dur : recElapsed);
+  audioPlayer.currentTime = audioT;
+  playheadTime = audioTimeToGraph(audioT);
+  redrawAll();
+  var durDisplay = durKnown ? dur : recElapsed;
+  document.getElementById('playbackTime').textContent=fmtTime(audioT)+' / '+fmtTime(durDisplay);
+});
+
+audioPlayer.addEventListener('ended',function(){
+  document.getElementById('btnPause').style.display='none';
+  document.getElementById('btnPlay').style.display='inline-block';
+  document.getElementById('btnPlayGraph').textContent='▶';
+  stopPlaybackSync();
+});
+
+/* ══════════════════════════════════════════════════════════════
+   SCORING SYSTEM
+══════════════════════════════════════════════════════════════ */
+function computeScore(){
+  var evs=noteEvents,N=evs.length;if(!N)return null;
+  var sumAbs=0;for(var i=0;i<N;i++)sumAbs+=Math.abs(evs[i].cents);
+  var avgAbs=sumAbs/N;
+  var pitchScore=Math.max(0,Math.min(100,100-(avgAbs/25)*100));
+  var mean=evs.reduce(function(s,e){return s+e.cents;},0)/N;
+  var variance=evs.reduce(function(s,e){return s+Math.pow(e.cents-mean,2);},0)/N;
+  var stdDev=Math.sqrt(variance);
+  var stabilityScore=Math.max(0,Math.min(100,100-(stdDev/20)*100));
+  var closeAttacks=0;for(var ia=0;ia<N;ia++){if(Math.abs(evs[ia].cents)<15)closeAttacks++;}
+  var attackScore=(closeAttacks/N)*100;
+  var driftScore;
+  if(N<3){driftScore=pitchScore;}
+  else{
+    var diffs=[];
+    for(var id=1;id<N;id++){if(evs[id].noteClass===evs[id-1].noteClass)diffs.push(Math.abs(evs[id].cents-evs[id-1].cents));}
+    driftScore=diffs.length?Math.max(0,Math.min(100,100-(diffs.reduce(function(s,v){return s+v;},0)/diffs.length/25)*100)):stabilityScore;
+  }
+  var overall=Math.round(Math.min(100,Math.max(0,pitchScore*.50+stabilityScore*.25+attackScore*.15+driftScore*.10)));
+  var rating=overall>=95?'Outstanding':overall>=88?'Very Strong':overall>=78?'Solid':overall>=65?'Developing':'Needs Focused Work';
+  return{overall:overall,pitch:Math.round(pitchScore),stability:Math.round(stabilityScore),
+    attack:Math.round(attackScore),drift:Math.round(driftScore),rating:rating,avgAbs:avgAbs,meanCents:mean,stdDev:stdDev};
+}
+function findBestWorst(){
+  var evs=noteEvents;if(!evs.length)return null;
+  var best=evs[0],worst=evs[0];
+  for(var i=1;i<evs.length;i++){if(Math.abs(evs[i].cents)<Math.abs(best.cents))best=evs[i];if(Math.abs(evs[i].cents)>Math.abs(worst.cents))worst=evs[i];}
+  return{best:best,worst:worst};
+}
+function centsPhrase(cents){var abs=Math.abs(cents),dir=cents>0?'sharp':'flat';if(abs<5)return'very well centered';if(abs<10)return'slightly '+dir;if(abs<20)return'noticeably '+dir;return'significantly '+dir;}
+function registerInsight(){
+  var evs=noteEvents,regs={low:[],mid:[],high:[]};
+  for(var i=0;i<evs.length;i++)regs[evs[i].register].push(Math.abs(evs[i].cents));
+  function avg(a){return a.length?a.reduce(function(s,v){return s+v;},0)/a.length:null;}
+  var la=avg(regs.low),ha=avg(regs.high),parts=[];
+  if(la!==null&&ha!==null){
+    if(ha<la+4)parts.push('Low and upper register intonation were similarly centered.');
+    else if(ha<la+10)parts.push('Upper register notes were a bit less stable than lower ones.');
+    else parts.push('Upper register intonation needs more precision — slow practice helps.');
+  }
+  if(la!==null&&la<8)parts.push('Lower register notes were especially well centered.');
+  return parts[0]||'';
+}
+function patternInsights(score){
+  var evs=noteEvents,N=evs.length,insights=[];if(!N)return insights;
+  if(score.meanCents>5)insights.push('You tended to play '+score.meanCents.toFixed(1)+'¢ sharp overall. '+
+    (instKey==='brass'?'Check embouchure tension on long notes.':instKey==='voice'?'Aim to settle pitch just after the attack.':'Try listening more actively to the reference pitch.'));
+  else if(score.meanCents<-5)insights.push('You tended to play '+Math.abs(score.meanCents).toFixed(1)+'¢ flat overall. '+
+    (instKey==='brass'?'Support the air column more firmly.':instKey==='voice'?'Lift the soft palate slightly for brighter resonance.':'More bow weight or finger pressure may help.'));
+  if(score.stdDev>15)insights.push('Pitch stability varied noticeably — consistency will improve with slower, deliberate intonation practice.');
+  else if(score.stdDev<6)insights.push('Pitch stability was strong and consistent across the passage.');
+  return insights;
+}
+function recommendation(score){
+  var s=score,lowest='pitch';
+  if(s.attack<=s.pitch&&s.attack<=s.stability&&s.attack<=s.drift)lowest='attack';
+  else if(s.stability<=s.pitch&&s.stability<=s.drift)lowest='stability';
+  else if(s.drift<=s.pitch)lowest='drift';
+  if(lowest==='attack')return'Focus next on cleaner note entries — try practicing each note with a deliberate, centered attack.';
+  if(lowest==='stability')return'Focus next on consistency — work through the passage slowly, tuning each note before moving on.';
+  if(lowest==='drift')return'Focus next on sustaining notes without drifting — hold long tones and listen carefully through the full duration.';
+  return'Continue working on centering pitch more quickly on each note.';
+}
+function renderScore(score,bw){
+  if(!score)return;
+  var circumference=289,offset=circumference-(score.overall/100)*circumference;
+  var fill=document.getElementById('scoreCircleFill');
+  fill.style.strokeDashoffset=offset;
+  var cc=score.overall>=88?'#8ef5a8':score.overall>=65?'#ffc050':'#ff7060';
+  fill.style.stroke=cc;
+  document.getElementById('scoreNum').innerHTML=score.overall+'<span>/100</span>';
+  document.getElementById('scoreRating').textContent=score.rating;
+  document.getElementById('scoreRating').style.color=cc;
+  document.getElementById('scoreSubtext').textContent='Avg deviation: '+score.avgAbs.toFixed(1)+'¢';
+  function setBar(id,valId,val,color){setTimeout(function(){document.getElementById(id).style.width=val+'%';},200);document.getElementById(id).style.background=color;document.getElementById(valId).textContent=val;}
+  setBar('barAccuracy','valAccuracy',score.pitch,'#8ef5a8');
+  setBar('barStability','valStability',score.stability,'#70c8e0');
+  setBar('barAttack','valAttack',score.attack,'#ffc050');
+  setBar('barDrift','valDrift',score.drift,'#f0b050');
+  if(bw){
+    var bAbs=Math.abs(bw.best.cents),wAbs=Math.abs(bw.worst.cents);
+    document.getElementById('shBestNote').textContent=bw.best.name;document.getElementById('shBestNote').style.color=bAbs<10?'#8ef5a8':'#ffc050';
+    document.getElementById('shBestDesc').textContent='Right on — '+centsPhrase(bw.best.cents)+' ('+(bw.best.cents>=0?'+':'')+bw.best.cents.toFixed(1)+'¢).';
+    document.getElementById('shWorstNote').textContent=bw.worst.name;document.getElementById('shWorstNote').style.color=wAbs<20?'#ffc050':'#ff7060';
+    document.getElementById('shWorstDesc').textContent='Here you ran '+centsPhrase(bw.worst.cents)+' ('+(bw.worst.cents>=0?'+':'')+bw.worst.cents.toFixed(1)+'¢).';
+  }
+  var patterns=patternInsights(score),regI=registerInsight();
+  document.getElementById('insightText1').textContent=patterns[0]||'';
+  document.getElementById('insightText2').textContent=patterns[1]||'';
+  document.getElementById('insightText3').textContent=regI;
+  document.getElementById('recText').textContent=recommendation(score);
+  document.getElementById('scorePanel').className='panel score-panel show';
+}
+function saveSession(score){
+  try{
+    var h=JSON.parse(localStorage.getItem('intone_sessions')||'[]');
+    h.unshift({date:new Date().toLocaleDateString(),score:score.overall,avg:score.avgAbs.toFixed(1)});
+    if(h.length>10)h.length=10;
+    localStorage.setItem('intone_sessions',JSON.stringify(h));renderHistory(h);
+    document.getElementById('historyPanel').className='panel history-panel show';
+  }catch(e){}
+}
+function renderHistory(h){
+  var list=document.getElementById('historyList');list.innerHTML='';
+  for(var i=0;i<h.length;i++){
+    var sc=h[i].score>=88?'#8ef5a8':h[i].score>=65?'#ffc050':'#ff7060';
+    var row=document.createElement('div');row.className='history-row';
+    row.innerHTML='<span class="history-date">'+h[i].date+'</span><span class="history-score" style="color:'+sc+'">'+h[i].score+'</span><span class="history-avg">±'+h[i].avg+'¢</span>';
+    list.appendChild(row);
+  }
+}
+function loadHistory(){try{var h=JSON.parse(localStorage.getItem('intone_sessions')||'[]');if(h.length){renderHistory(h);document.getElementById('historyPanel').className='panel history-panel show';}}catch(e){}}
+function showSummary(){
+  var N=noteEvents.length,inT=0,i;for(i=0;i<N;i++)if(Math.abs(noteEvents[i].cents)<10)inT++;
+  var pct=Math.round((inT/N)*100),avg=noteEvents.reduce(function(s,e){return s+e.cents;},0)/N;
+  var sh=0,fl=0;for(i=0;i<N;i++){if(noteEvents[i].cents>5)sh++;else if(noteEvents[i].cents<-5)fl++;}
+  var bias='Centered';if(sh>fl*1.6)bias='Sharp ↑';else if(fl>sh*1.6)bias='Flat ↓';
+  document.getElementById('sumTotal').textContent=N;document.getElementById('sumPct').textContent=pct+'%';
+  var ae=document.getElementById('sumAvg');ae.textContent=(avg>=0?'+':'')+avg.toFixed(1)+'¢';ae.style.color=avg>2?'var(--accent2)':avg<-2?'var(--cool)':'var(--green)';
+  var be=document.getElementById('sumBias');be.textContent=bias;be.style.color=bias.indexOf('Sharp')!==-1?'var(--accent2)':bias.indexOf('Flat')!==-1?'var(--cool)':'var(--green)';
+  document.getElementById('summaryPanel').className='panel summary-panel show';
+}
+function updateResetBtn(){document.getElementById('btnReset').disabled=noteEvents.length===0&&!audioBlob;}
+function doReset(){
+  if(analyzing)analyzeStop();if(recordingActive)stopAudioRecording();pauseAudio();
+  noteEvents=[];pendingMidi=null;pendingFrames=0;lastConfirmed=-99;
+  audioChunks=[];audioBlob=null;recElapsed=0;recAudioOffset=0;
+  audioPlayer.src='';playheadTime=-1;activeNoteIdx=-1;
+  document.getElementById('notesList').innerHTML='<div class="notes-empty">Note history appears once you start analyzing.</div>';
+  document.getElementById('summaryPanel').className='panel summary-panel';
+  document.getElementById('scorePanel').className='panel score-panel';
+  document.getElementById('graphNudge').style.display='block';
+  document.getElementById('btnExport').style.display='none';
+  document.getElementById('btnPlay').style.display='none';
+  document.getElementById('btnPause').style.display='none';
+  showPlaybackBar(false);
+  document.getElementById('recProgressBar').style.width='0%';
+  document.getElementById('recTimer').textContent='0:00';
+  document.getElementById('recTimer').classList.add('idle');
+  document.getElementById('recTimer').classList.remove('live');
+  updateResetBtn();redrawAll();
+  setStatus(tunerOn?'Session reset — tuner still live':'Session reset');
+}
+
+/* ── Mic banner ── */
+function showMicBanner(showHttps){
+  var steps;
+  if(isIOS||isIPadOS)steps=[
+    'Go to <strong>Settings → Safari</strong>.',
+    'Scroll to "Settings for Websites" → <strong>Microphone</strong> → set to <strong>Allow</strong>.',
+    'Return here and tap <strong>Tuner On</strong> again.',
+    '<em>Note: Chrome and Edge on iPhone use Safari\'s engine and have the same settings.</em>'
+  ];
+  else if(isSafari)steps=['<strong>Safari → Settings for This Website</strong>.','Set <strong>Microphone → Allow</strong>.','Reload and tap <strong>Tuner On</strong>.'];
+  else if(isEdge)steps=['Click the <strong>lock icon</strong> in the address bar.','Set <strong>Microphone → Allow</strong>.','Tap <strong>Tuner On</strong> again.'];
+  else steps=['Click the <strong>🔒 lock icon</strong> in the address bar.','Set <strong>Microphone → Allow</strong>.','Click <strong>Tuner On</strong> again.'];
+  document.getElementById('micSteps').innerHTML=steps.map(function(s){return'<li>'+s+'</li>';}).join('');
+  document.getElementById('micBanner').className='mic-banner show';
+  if(showHttps){
+    document.getElementById('httpsWarning').style.display='block';
+  }
+}
+
+/* ── Tuner on/off ── */
+function tunerStart(){
+  document.getElementById('micBanner').className='mic-banner';
+  document.getElementById('httpsWarning').style.display='none';
+
+  /* HTTPS gate: iOS and modern browsers require secure context for getUserMedia */
+  if(!isSecureCtx){
+    setStatus('Microphone requires HTTPS — see the notice above ↑');
+    showMicBanner(true);
+    return;
+  }
+
+  if(!AudioCtxClass){setStatus('Web Audio not supported — update your browser.');return;}
+  if(!doGUM){
+    setStatus('Microphone not available — requires iOS 14.5+ or a modern browser.');
+    showMicBanner(false);
+    return;
+  }
+
+  try{audioCtx=new AudioCtxClass();}catch(e){setStatus('Audio error: '+e.message);return;}
+  doGUM({audio:{echoCancellation:true,noiseSuppression:false,autoGainControl:false},video:false})
+    .then(function(stream){mediaStream=stream;if(audioCtx.state==='suspended')audioCtx.resume().then(function(){startAudioSystem(stream);});else startAudioSystem(stream);})
+    .catch(function(err){
+      var msg=(err&&(err.name||err.message))||String(err);
+      if(msg.indexOf('NotAllowed')!==-1||msg.indexOf('PermissionDenied')!==-1||msg.indexOf('Security')!==-1){
+        showMicBanner(!isSecureCtx);
+        setStatus('Mic access denied — see instructions above ↑');
+      } else if(msg.indexOf('NotFound')!==-1){setStatus('No microphone found. Try a headset or external mic.');}
+      else if(msg.indexOf('NotReadable')!==-1){setStatus('Mic in use by another app — close it and try again.');}
+      else{setStatus('Mic error: '+msg);}
+    });
+}
+function startAudioSystem(stream){
+  analyser=audioCtx.createAnalyser();analyser.fftSize=4096;analyser.smoothingTimeConstant=instProfile.smooth;
+  try{srcNode=audioCtx.createMediaStreamSource(stream);}catch(e){setStatus('Mic connect error: '+e.message);return;}
+  srcNode.connect(analyser);
+  tunerOn=true;pitchBuf=[];smoothedPitch=0;pendingMidi=null;pendingFrames=0;lastConfirmed=-99;
+  document.getElementById('btnTunerOn').style.display='none';
+  document.getElementById('btnTunerOff').style.display='inline-block';
+  document.getElementById('micDot').className='mic-dot live';
+  document.getElementById('tunerRail').className='tuner-rail live';
+  document.getElementById('tunerStateLabel').textContent='Mic live';
+  document.getElementById('tunerPrompt').className='tuner-prompt hidden';
+  document.getElementById('btnAnalyzeStart').disabled=false;
+  document.getElementById('btnRecord').disabled=false;
+  setStatus('Tuner live — play any note');
+  audioLoop();
+}
+function tunerStop(){
+  tunerOn=false;analyzing=false;
+  if(rafId){cancelAnimationFrame(rafId);rafId=null;}
+  if(recordingActive)stopAudioRecording();
+  try{if(srcNode)srcNode.disconnect();}catch(e){}
+  if(mediaStream)mediaStream.getTracks().forEach(function(t){t.stop();});
+  try{if(audioCtx)audioCtx.close();}catch(e){}
+  document.getElementById('btnTunerOn').style.display='inline-block';
+  document.getElementById('btnTunerOff').style.display='none';
+  document.getElementById('micDot').className='mic-dot';
+  document.getElementById('tunerRail').className='tuner-rail';
+  document.getElementById('tunerStateLabel').textContent='Mic off';
+  document.getElementById('tunerPrompt').className='tuner-prompt';
+  document.getElementById('btnAnalyzeStart').disabled=true;
+  document.getElementById('btnAnalyzeStop').style.display='none';
+  document.getElementById('btnAnalyzeStart').style.display='inline-block';
+  document.getElementById('analyzeDot').className='analyze-dot';
+  document.getElementById('analyzeLabel').textContent='Not recording';
+  document.getElementById('analyzeLabel').className='analyze-label';
+  document.getElementById('btnRecord').disabled=true;
+  resetTunerDisplay();stopRecTimer();setStatus('Tuner off');
+  if(noteEvents.length){showSummary();document.getElementById('btnExport').style.display='inline-block';}
+}
+
+/* ── Analyze start/stop ── */
+function analyzeStart(){
+  if(!tunerOn)return;
+  analyzing=true;pendingMidi=null;pendingFrames=0;lastConfirmed=-99;
+  recStartTime=performance.now();
+  /* Calculate audio offset: how far into the audio recording is the analysis start? */
+  if(recordingActive&&recAudioStart>0){
+    recAudioOffset=(recStartTime-recAudioStart)/1000;  /* positive = audio started first */
+  } else {
+    recAudioOffset=0;
+  }
+  startRecTimer();
+  document.getElementById('btnAnalyzeStart').style.display='none';
+  document.getElementById('btnAnalyzeStop').style.display='inline-block';
+  document.getElementById('analyzeDot').className='analyze-dot recording';
+  document.getElementById('analyzeLabel').textContent='Recording';
+  document.getElementById('analyzeLabel').className='analyze-label recording';
+  document.getElementById('graphNudge').style.display='none';
+  setStatus('Recording — play your passage');
+}
+function analyzeStop(){
+  analyzing=false;pendingMidi=null;pendingFrames=0;
+  stopRecTimer();
+  document.getElementById('btnAnalyzeStop').style.display='none';
+  document.getElementById('btnAnalyzeStart').style.display='inline-block';
+  document.getElementById('analyzeDot').className='analyze-dot';
+  document.getElementById('analyzeLabel').textContent='Not recording';
+  document.getElementById('analyzeLabel').className='analyze-label';
+  setStatus('Analysis paused — tuner still live');
+  if(noteEvents.length){
+    showSummary();document.getElementById('btnExport').style.display='inline-block';
+    var score=computeScore(),bw=findBestWorst();
+    if(score){renderScore(score,bw);saveSession(score);}
+  }
+}
+function setStatus(msg){document.getElementById('ctrlStatus').textContent=msg;}
+
+/* ── Theme toggle ── */
+function toggleTheme(){
+  var root=document.documentElement,wasNight=root.getAttribute('data-theme')==='night';
+  root.setAttribute('data-theme',wasNight?'day':'night');
+  document.getElementById('toggleLabel').textContent=wasNight?'Day':'Night';
+  setTimeout(function(){redrawAll();},55);
+}
+
+/* ══════════════════════════════════════════════════════════════
+   METRONOME — lookahead scheduler (Chris Wilson pattern)
+   Timing uses audioCtx to avoid JS event loop drift.
+══════════════════════════════════════════════════════════════ */
+var metroRunning=false,metroBpm=120,metroBeats=4,metroVolume=0.70;
+var metroCurBeat=0,metroNextTime=0,metroTimerID=null;
+var tapTimes=[],TAP_TIMEOUT=2500;
+var METRO_LOOKAHEAD_MS=25,METRO_SCHEDULE_AHEAD=0.10;
+var metroAudioCtx=null;
+
+function getMetroCtx(){
+  if(!metroAudioCtx||metroAudioCtx.state==='closed')metroAudioCtx=new(window.AudioContext||window.webkitAudioContext)();
+  if(metroAudioCtx.state==='suspended')metroAudioCtx.resume();
+  return metroAudioCtx;
+}
+function scheduleClick(ctx,when,isAccent){
+  var osc=ctx.createOscillator(),gain=ctx.createGain();
+  osc.connect(gain);gain.connect(ctx.destination);
+  osc.type='sine';osc.frequency.value=isAccent?1100:850;
+  var peak=metroVolume*(isAccent?.85:.65),decayT=isAccent?.060:.040;
+  gain.gain.setValueAtTime(0,when);
+  gain.gain.linearRampToValueAtTime(peak,when+.004);
+  gain.gain.exponentialRampToValueAtTime(.0001,when+decayT);
+  osc.start(when);osc.stop(when+decayT+.01);
+  var delayMs=(when-ctx.currentTime)*1000,beatIdx=metroCurBeat;
+  setTimeout(function(){flashBeat(beatIdx,isAccent);},Math.max(0,delayMs));
+}
+function scheduleMetro(){
+  var ctx=getMetroCtx(),bd=60.0/metroBpm;
+  while(metroNextTime<ctx.currentTime+METRO_SCHEDULE_AHEAD){
+    scheduleClick(ctx,metroNextTime,metroCurBeat===0);
+    metroNextTime+=bd;metroCurBeat=(metroCurBeat+1)%metroBeats;
+  }
+}
+function flashBeat(idx,isAccent){
+  var dots=document.querySelectorAll('.beat-dot');
+  for(var i=0;i<dots.length;i++)dots[i].classList.remove('lit','lit-accent');
+  if(idx<dots.length){
+    dots[idx].classList.add(isAccent?'lit-accent':'lit');
+    var d=dots[idx];setTimeout(function(){d.classList.remove('lit','lit-accent');},120);
+  }
+}
+function buildBeatDots(n){
+  var row=document.getElementById('metroBeatRow');row.innerHTML='';
+  for(var i=0;i<n;i++){var d=document.createElement('div');d.className='beat-dot';row.appendChild(d);}
+}
+function metroStart(){
+  if(metroRunning)return;
+  if(document.getElementById('metroCountIn').checked&&!analyzing){runCountIn();return;}
+  var ctx=getMetroCtx();
+  metroRunning=true;metroCurBeat=0;metroNextTime=ctx.currentTime+.05;
+  scheduleMetro();metroTimerID=setInterval(scheduleMetro,METRO_LOOKAHEAD_MS);
+  document.getElementById('btnMetroStart').style.display='none';
+  document.getElementById('btnMetroStop').style.display='inline-block';
+}
+function metroStop(){
+  if(!metroRunning)return;
+  metroRunning=false;clearInterval(metroTimerID);metroTimerID=null;
+  document.querySelectorAll('.beat-dot').forEach(function(d){d.classList.remove('lit','lit-accent');});
+  document.getElementById('btnMetroStop').style.display='none';
+  document.getElementById('btnMetroStart').style.display='inline-block';
+}
+function runCountIn(){
+  var ctx=getMetroCtx(),bd=60.0/metroBpm,now=ctx.currentTime+.05;
+  for(var b=0;b<metroBeats;b++)scheduleClick(ctx,now+b*bd,b===0);
+  setTimeout(function(){
+    if(!analyzing&&tunerOn)analyzeStart();
+    metroRunning=true;metroCurBeat=0;metroNextTime=getMetroCtx().currentTime+.05;
+    scheduleMetro();metroTimerID=setInterval(scheduleMetro,METRO_LOOKAHEAD_MS);
+    document.getElementById('btnMetroStart').style.display='none';
+    document.getElementById('btnMetroStop').style.display='inline-block';
+  },bd*metroBeats*1000);
+}
+function setMetroBpm(bpm){
+  metroBpm=Math.max(40,Math.min(220,Math.round(bpm)));
+  document.getElementById('metroBpmDisplay').textContent=metroBpm;
+  document.getElementById('metroBpmSlider').value=metroBpm;
+}
+function handleTap(){
+  var now=performance.now();
+  tapTimes=tapTimes.filter(function(t){return now-t<TAP_TIMEOUT;});tapTimes.push(now);
+  if(tapTimes.length>=2){
+    var intervals=[];for(var i=1;i<tapTimes.length;i++)intervals.push(tapTimes[i]-tapTimes[i-1]);
+    setMetroBpm(60000/(intervals.reduce(function(s,v){return s+v;},0)/intervals.length));
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════
+   EVENT LISTENERS
+══════════════════════════════════════════════════════════════ */
+document.getElementById('btnTunerOn').addEventListener('click',tunerStart);
+document.getElementById('btnTunerOff').addEventListener('click',tunerStop);
+document.getElementById('btnAnalyzeStart').addEventListener('click',analyzeStart);
+document.getElementById('btnAnalyzeStop').addEventListener('click',analyzeStop);
+document.getElementById('btnReset').addEventListener('click',doReset);
+document.getElementById('btnRecord').addEventListener('click',startAudioRecording);
+document.getElementById('btnRecStop').addEventListener('click',stopAudioRecording);
+document.getElementById('btnPlay').addEventListener('click',playAudio);
+document.getElementById('btnPause').addEventListener('click',pauseAudio);
+document.getElementById('btnPlayGraph').addEventListener('click',function(){if(!audioPlayer.paused)pauseAudio();else playAudio();});
+
+/* Graph click to scrub */
+document.getElementById('graphCanvas').addEventListener('click',function(e){handleGraphClick(this,e);});
+document.getElementById('modalCanvas').addEventListener('click',function(e){handleGraphClick(this,e);});
+document.getElementById('graphCanvas').addEventListener('touchend',function(e){e.preventDefault();handleGraphClick(this,e.changedTouches[0]||e);});
+
+/* Recording mode */
+document.querySelectorAll('.rec-mode-btn').forEach(function(btn){
+  btn.addEventListener('click',function(){
+    recMaxDur=parseInt(this.getAttribute('data-dur'),10);
+    document.querySelectorAll('.rec-mode-btn').forEach(function(b){b.classList.remove('active');});
+    this.classList.add('active');
+  });
+});
+
+/* Theme toggle — touchend + click (prevent double-fire on iOS) */
+var toggling=false,toggleEl=document.getElementById('themeToggle');
+toggleEl.addEventListener('touchend',function(e){e.preventDefault();toggling=true;toggleTheme();setTimeout(function(){toggling=false;},350);});
+toggleEl.addEventListener('click',function(){if(!toggling)toggleTheme();});
+toggleEl.addEventListener('keydown',function(e){if(e.keyCode===13||e.keyCode===32){e.preventDefault();toggleTheme();}});
+
+/* A4 */
+document.getElementById('a4Slider').addEventListener('input',function(){a4=parseFloat(this.value);document.getElementById('a4Val').textContent=a4.toFixed(1)+' Hz';});
+document.getElementById('a4Slider').addEventListener('change',function(){a4=parseFloat(this.value);document.getElementById('a4Val').textContent=a4.toFixed(1)+' Hz';});
+
+/* Graph tabs */
+var tabBtns=document.querySelectorAll('.tab-btn');
+for(var ti=0;ti<tabBtns.length;ti++){(function(btn){btn.addEventListener('click',function(){
+  graphMode=btn.getAttribute('data-mode');
+  for(var i=0;i<tabBtns.length;i++){tabBtns[i].className=tabBtns[i].className.replace(' active','');tabBtns[i].setAttribute('aria-selected','false');}
+  btn.className+=' active';btn.setAttribute('aria-selected','true');redrawAll();
+});})(tabBtns[ti]);}
+
+/* Fullscreen */
+document.getElementById('btnExpand').addEventListener('click',function(){
+  document.getElementById('overlay').className='overlay open';
+  requestAnimationFrame(function(){requestAnimationFrame(function(){drawGraph(document.getElementById('modalCanvas'),true);});});
+});
+document.getElementById('btnModalClose').addEventListener('click',function(){document.getElementById('overlay').className='overlay';});
+document.getElementById('overlay').addEventListener('click',function(e){if(e.target===document.getElementById('overlay'))document.getElementById('overlay').className='overlay';});
+
+/* Instrument mode */
+document.getElementById('instTabs').addEventListener('click',function(e){
+  var btn=e.target;while(btn&&btn.className.indexOf('inst-btn')===-1)btn=btn.parentNode;
+  if(!btn||!btn.getAttribute('data-inst'))return;
+  var bs=document.querySelectorAll('.inst-btn');for(var i=0;i<bs.length;i++)bs[i].className=bs[i].className.replace(' active','');
+  btn.className+=' active';instKey=btn.getAttribute('data-inst');instProfile=INST[instKey];
+  if(analyser)analyser.smoothingTimeConstant=instProfile.smooth;
+});
+
+/* CSV export */
+document.getElementById('btnExport').addEventListener('click',function(){
+  if(!noteEvents.length)return;
+  var rows=[['Note','Time (s)','Played Hz','Reference Hz','Cents Deviation','In Tune','Register']];
+  for(var i=0;i<noteEvents.length;i++){var e=noteEvents[i];rows.push([e.name,e.timeStart.toFixed(2),e.hz.toFixed(3),e.target.toFixed(3),e.cents.toFixed(2),Math.abs(e.cents)<10?'Yes':'No',e.register]);}
+  var csv=rows.map(function(r){return r.join(',');}).join('\n');
+  try{var blob=new Blob([csv],{type:'text/csv'}),url=URL.createObjectURL(blob),a=document.createElement('a');a.href=url;a.download='intone-'+Date.now()+'.csv';document.body.appendChild(a);a.click();document.body.removeChild(a);setTimeout(function(){URL.revokeObjectURL(url);},1000);}
+  catch(e){window.open('data:text/csv;charset=utf-8,'+encodeURIComponent(csv));}
+});
+
+/* Metronome events */
+document.getElementById('btnMetroStart').addEventListener('click',metroStart);
+document.getElementById('btnMetroStop').addEventListener('click',metroStop);
+document.getElementById('btnBpmDown').addEventListener('click',function(){setMetroBpm(metroBpm-1);});
+document.getElementById('btnBpmUp').addEventListener('click',function(){setMetroBpm(metroBpm+1);});
+/* Long-press BPM */
+function setupLongPress(id,delta){
+  var lp,el=document.getElementById(id);
+  function s(){setMetroBpm(metroBpm+delta);lp=setInterval(function(){setMetroBpm(metroBpm+delta);},150);}
+  function c(){clearInterval(lp);}
+  el.addEventListener('mousedown',s);el.addEventListener('touchstart',s,{passive:true});
+  el.addEventListener('mouseup',c);el.addEventListener('touchend',c);el.addEventListener('mouseleave',c);
+}
+setupLongPress('btnBpmDown',-1);setupLongPress('btnBpmUp',1);
+document.getElementById('metroBpmSlider').addEventListener('input',function(){setMetroBpm(parseFloat(this.value));});
+document.getElementById('metroVolSlider').addEventListener('input',function(){metroVolume=parseFloat(this.value);});
+document.getElementById('metroSigTabs').addEventListener('click',function(e){
+  var btn=e.target.closest('.metro-sig-btn');if(!btn)return;
+  metroBeats=parseInt(btn.getAttribute('data-beats'),10);metroCurBeat=0;
+  document.querySelectorAll('.metro-sig-btn').forEach(function(b){b.classList.remove('active');});
+  btn.classList.add('active');buildBeatDots(metroBeats);
+});
+document.getElementById('btnTap').addEventListener('click',handleTap);
+document.getElementById('btnTap').addEventListener('keydown',function(e){if(e.keyCode===32||e.keyCode===13){e.preventDefault();handleTap();}});
+
+/* Keyboard shortcuts */
+document.addEventListener('keydown',function(e){
+  if(e.keyCode===32&&e.target===document.body){e.preventDefault();if(!tunerOn)tunerStart();else if(!analyzing)analyzeStart();else analyzeStop();}
+  if(e.keyCode===27)document.getElementById('overlay').className='overlay';
+  if(e.keyCode===69)document.getElementById('btnExpand').click();   /* E = expand */
+  if(e.keyCode===84)toggleTheme();                                   /* T = theme  */
+  if(e.keyCode===82&&!e.metaKey&&!e.ctrlKey)doReset();              /* R = reset  */
+  if(e.keyCode===80){if(!audioPlayer.paused)pauseAudio();else if(audioBlob)playAudio();}  /* P = play  */
+  if(e.keyCode===77&&!e.metaKey&&!e.ctrlKey&&e.target===document.body){if(metroRunning)metroStop();else metroStart();} /* M = metro */
+});
+
+/* iOS: resume AudioContext if screen locks */
+document.addEventListener('visibilitychange',function(){
+  if(!document.hidden){
+    if(audioCtx&&audioCtx.state==='suspended'&&tunerOn)audioCtx.resume();
+    if(metroAudioCtx&&metroAudioCtx.state==='suspended'&&metroRunning)metroAudioCtx.resume();
+  }
+});
+
+/* Build tuner ticks */
+(function(){
+  var c=document.getElementById('tunerTicks'),marks=[-50,-40,-30,-20,-10,0,10,20,30,40,50];
+  for(var i=0;i<marks.length;i++){var v=marks[i],t=document.createElement('div');
+    t.className='tuner-tick'+(v===0?' center':'');t.style.left=((v+50)/100*88+6)+'%';c.appendChild(t);}
+})();
+
+/* Init */
+buildBeatDots(metroBeats);
+updateResetBtn();
+loadHistory();
+requestAnimationFrame(function(){redrawAll();});
+var rsT;window.addEventListener('resize',function(){clearTimeout(rsT);rsT=setTimeout(function(){redrawAll();},120);});
+
+/* Proactive HTTPS notice on iOS — warn before they even tap a button */
+if((isIOS||isIPadOS)&&!isSecureCtx){
+  document.getElementById('micBanner').className='mic-banner show';
+  document.getElementById('micSteps').innerHTML='<li>This page is served over <strong>http://</strong></li><li>Microphone access on iPhone requires <strong>https://</strong></li><li>Ask the person who shared this link to enable HTTPS</li>';
+  document.getElementById('httpsWarning').style.display='block';
+  setStatus('HTTPS required for mic access on iPhone — see notice above ↑');
+}
+</script>
+</body>
+</html>
